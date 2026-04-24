@@ -33,3 +33,8 @@ charts/
 .vscode/
 *.swp
 *.swo
+
+# Claude Code runtime artifacts — settings.local.json is personal, lock
+# files are per-session runtime state; neither belongs in the repo.
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
