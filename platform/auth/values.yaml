@@ -31,8 +31,13 @@ server:
       cpu: 100m
       memory: 512Mi
     limits:
-      cpu: 500m
+      cpu: 1000m
       memory: 1Gi
+
+  readinessProbe:
+    timeoutSeconds: 5
+    failureThreshold: 5
+    periodSeconds: 10
 
   metrics:
     enabled: false
@@ -47,7 +52,7 @@ worker:
       memory: 256Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 768Mi
 
 # Sub-charts disabled — using CNPG cluster (platform/auth/postgresql.yaml)
 # and standalone Redis (platform/auth/redis.yaml) instead
