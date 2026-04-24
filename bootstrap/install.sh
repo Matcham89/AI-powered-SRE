@@ -426,7 +426,20 @@ print(t['stringData']['${key}'])
         info "Running terraform init + apply (this may take a minute)..."
         pushd "${TERRAFORM_DIR}" >/dev/null
         terraform init -upgrade -input=false -no-color >/dev/null 2>&1
-        if terraform apply -auto-approve -input=false -no-color; then
+        # Pass every SOPS-derived value as -var so it beats any stale
+        # terraform.tfvars on disk (tfvars outranks TF_VAR_* env vars,
+        # but -var outranks tfvars). Without this, a developer-local
+        # tfvars file silently overrides the password/secrets the
+        # bootstrap just decrypted from SOPS, and the "demo-user"
+        # password printed in the summary stops matching what
+        # Authentik actually stores.
+        if terraform apply -auto-approve -input=false -no-color \
+            -var="authentik_url=${TF_VAR_authentik_url}" \
+            -var="authentik_token=${TF_VAR_authentik_token}" \
+            -var="admin_password=${TF_VAR_admin_password}" \
+            -var="grafana_client_secret=${TF_VAR_grafana_client_secret}" \
+            -var="temporal_client_secret=${TF_VAR_temporal_client_secret}" \
+            -var="argocd_client_secret=${TF_VAR_argocd_client_secret}"; then
           success "Terraform applied — SSO providers configured for ArgoCD, Grafana, Temporal"
         else
           warn "terraform apply failed — re-run: cd terraform && terraform apply"
