@@ -17,6 +17,7 @@ resources:
   - argocd/argocd-rbac-cm.yaml
   - argocd/httproute-argocd.yaml
   - argocd/coredns-custom.yaml
+  - networking/platform-gateway-svc.yaml
 
   # ── Platform component Applications ───────────────────────────────────────────
   # Uncommented as each step is implemented and tested:
