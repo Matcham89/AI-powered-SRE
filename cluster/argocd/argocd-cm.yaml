@@ -16,7 +16,7 @@ data:
     name: Authentik
     issuer: http://auth.local:32170/application/o/argocd/
     clientID: argocd
-    clientSecret: $oidc.authentik.clientSecret
+    clientSecret: $argocd-oidc-secret:client-secret
     requestedScopes:
       - openid
       - profile
