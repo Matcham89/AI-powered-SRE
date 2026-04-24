@@ -1,5 +1,7 @@
 mimir:
   structuredConfig:
+    common:
+      replication_factor: 1
     ingest_storage:
       enabled: false
       kafka:
