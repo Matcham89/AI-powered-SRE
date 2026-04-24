@@ -1,22 +1,63 @@
-apiVersion: kagent.dev/v1alpha1
-kind: MCPServer
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-mcp-server
+  template:
+    metadata:
+      labels:
+        app: github-mcp-server
+    spec:
+      containers:
+        - name: github-mcp-server
+          image: node:22-slim
+          command: ["npx"]
+          args:
+            - -y
+            - "@github/mcp-server"
+            - --transport
+            - http
+            - --port
+            - "3000"
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GITHUB_PERSONAL_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-pat
+                  key: token
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+spec:
+  selector:
+    app: github-mcp-server
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
 metadata:
   name: github-mcp-server
   namespace: kagent
   labels:
     kagent.dev/discovery: "true"
 spec:
-  deployment:
-    image: "node:22-slim"
-    port: 3000
-    cmd: npx
-    args:
-      - -y
-      - "@github/mcp-server"
-    env:
-      - name: GITHUB_PERSONAL_ACCESS_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: github-pat
-            key: token
-  transportType: stdio
+  url: "http://github-mcp-server.kagent:3000/mcp"

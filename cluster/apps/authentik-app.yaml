@@ -23,7 +23,7 @@ spec:
       targetRevision: HEAD
       path: platform/auth
       directory:
-        exclude: "*.enc.yaml"
+        exclude: "{*.enc.yaml,httproute-*.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik
