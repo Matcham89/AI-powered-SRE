@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/isindir/sops-secrets-operator
+  repository: quay.io/isindir/sops-secrets-operator
   pullPolicy: IfNotPresent
 
 # The operator reads the Age private key from this K8s Secret.
