@@ -92,6 +92,8 @@ datasources:
         url: http://mimir-gateway.observability.svc/prometheus
         access: proxy
         isDefault: true
+        jsonData:
+          manageAlerts: false
 
 alerting:
   rules.yaml:
