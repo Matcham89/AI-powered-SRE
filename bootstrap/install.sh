@@ -165,6 +165,29 @@ success "Age key loaded from: ${AGE_KEY_FILE}"
 # ─── Step 4: Create namespaces ─────────────────────────────────────────────────
 step "4/9 Creating namespaces"
 
+if [[ "${DRY_RUN}" == "false" ]]; then
+  # Wait for any previously-deleted namespaces to finish terminating before recreating
+  for ns in argocd sops-operator; do
+    if kubectl get namespace "${ns}" -o jsonpath='{.status.phase}' 2>/dev/null | grep -q "Terminating"; then
+      info "Waiting for namespace ${ns} to finish terminating..."
+      TERM_TIMEOUT=120
+      TERM_ELAPSED=0
+      while kubectl get namespace "${ns}" &>/dev/null 2>&1; do
+        sleep 5
+        TERM_ELAPSED=$((TERM_ELAPSED + 5))
+        if [[ ${TERM_ELAPSED} -ge ${TERM_TIMEOUT} ]]; then
+          warn "Namespace ${ns} stuck terminating — force-clearing finalizers..."
+          kubectl get namespace "${ns}" -o json | \
+            python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" | \
+            kubectl replace --raw "/api/v1/namespaces/${ns}/finalize" -f - 2>/dev/null || true
+          sleep 3
+          break
+        fi
+      done
+    fi
+  done
+fi
+
 run "kubectl apply -f '${SCRIPT_DIR}/manifests/namespaces.yaml'"
 success "Namespaces: argocd, sops-operator"
 
@@ -216,37 +239,39 @@ run "helm upgrade --install sops-secrets-operator ${SOPS_OPERATOR_CHART} \
 success "SOPS Secrets Operator installed"
 
 # ─── Step 7b: Bootstrap ArgoCD repo credentials ───────────────────────────────
-# The repo is private. ArgoCD needs credentials before it can clone the repo
+# The repo is private — ArgoCD needs credentials before it can clone the repo
 # to read the SopsSecrets that would normally create those credentials.
-# Solution: apply the registry SopsSecrets directly now (SOPS Operator is
-# already running and will decrypt them into native K8s Secrets immediately).
-step "7b/9 Bootstrapping ArgoCD repo + cluster credentials"
+# We decrypt the registry secret with SOPS locally and create a native K8s
+# Secret directly in the argocd namespace, bypassing the SOPS Operator for
+# this one bootstrap step.
+step "7b/9 Bootstrapping ArgoCD repo credentials"
 
 REGISTRY_DIR="${REPO_ROOT}/cluster/registry"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
-  dryrun "kubectl apply -f '${REGISTRY_DIR}/repo-credentials.enc.yaml'"
-  dryrun "kubectl apply -f '${REGISTRY_DIR}/cluster-local.enc.yaml'"
+  dryrun "sops --decrypt ${REGISTRY_DIR}/repo-credentials.enc.yaml | extract values | kubectl create secret argocd-repo-creds -n argocd"
 else
-  info "Applying registry SopsSecrets (SOPS Operator will decrypt them)..."
-  kubectl apply -f "${REGISTRY_DIR}/repo-credentials.enc.yaml"
-  kubectl apply -f "${REGISTRY_DIR}/cluster-local.enc.yaml"
+  info "Decrypting repo credentials and creating ArgoCD repository Secret..."
+  TMPFILE=$(mktemp)
+  SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt "${REGISTRY_DIR}/repo-credentials.enc.yaml" > "${TMPFILE}"
 
-  info "Waiting for ArgoCD repo credential Secret (up to 90 seconds)..."
-  TIMEOUT=90
-  ELAPSED=0
-  while [[ ${ELAPSED} -lt ${TIMEOUT} ]]; do
-    SECRET=$(kubectl get secret argocd-repo-creds -n argocd 2>/dev/null || echo "")
-    [[ -n "${SECRET}" ]] && break
-    sleep 5
-    ELAPSED=$((ELAPSED + 5))
-  done
+  REPO_URL=$(ruby  -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['url']")
+  REPO_USER=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['username']")
+  REPO_PASS=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['password']")
+  REPO_TYPE=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['type']")
+  rm -f "${TMPFILE}"
 
-  if [[ -z "${SECRET}" ]]; then
-    warn "argocd-repo-creds Secret not created within ${TIMEOUT}s — check SOPS Operator logs:"
-    warn "  kubectl logs -n sops-operator -l app.kubernetes.io/name=sops-secrets-operator --tail=30"
-    error "Cannot continue without ArgoCD repo credentials."
-  fi
+  kubectl create secret generic argocd-repo-creds \
+    --namespace argocd \
+    --from-literal=url="${REPO_URL}" \
+    --from-literal=username="${REPO_USER}" \
+    --from-literal=password="${REPO_PASS}" \
+    --from-literal=type="${REPO_TYPE}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+
+  kubectl label secret argocd-repo-creds -n argocd \
+    argocd.argoproj.io/secret-type=repository --overwrite
+
   success "ArgoCD repo credential Secret created"
 fi
 
