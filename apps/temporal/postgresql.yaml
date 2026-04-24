@@ -5,13 +5,13 @@ metadata:
   namespace: temporal
   annotations:
     # Temporal's Helm chart registers the schema-init Job as a PreSync hook,
-    # which needs postgres already running. Move this Cluster into PreSync
-    # with an early wave so it reconciles to Ready before the schema Job
-    # tries to connect. Without this, PreSync hangs and Sync phase (where
-    # the SopsSecret would otherwise live) never starts.
+    # which needs postgres running. The Cluster itself also needs the
+    # temporal-db-app Secret to initdb, so it must apply AFTER the SopsSecret
+    # (wave -20) has had the SOPS Operator materialise the native Secrets.
+    # Wave -10 is after the SopsSecret, before the schema Job at default 0.
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-20"
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   instances: 1
   postgresql:
