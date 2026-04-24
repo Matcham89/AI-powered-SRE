@@ -358,41 +358,36 @@ print(t['stringData']['${key}'])
     DEMO_USER="demo-user"
     DEMO_PASS="${TF_VAR_admin_password}"
 
-    info "Waiting for Authentik server pod to be Running (up to 5 minutes)..."
-    AUTH_TIMEOUT=300
-    AUTH_ELAPSED=0
+    info "Waiting for Authentik server pod Ready (up to 5 minutes)..."
+    # `Ready` is driven by the chart's readinessProbe against /-/health/ready/ —
+    # so once the condition flips True the HTTP endpoint is already answering.
+    # Earlier versions of this script waited on pod phase "Running", which is
+    # set the moment the container starts (~15 s) — long before Authentik has
+    # finished DB migrations and bound its port. The port-forward established
+    # against a non-listening pod then stayed broken even after the app came
+    # up, so terraform would get skipped on every fresh bootstrap.
     AUTH_READY=false
-    while [[ ${AUTH_ELAPSED} -lt ${AUTH_TIMEOUT} ]]; do
-      AUTH_PHASE=$(kubectl get pods -n authentik \
-        -l "app.kubernetes.io/component=server" \
-        -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "")
-      if [[ "${AUTH_PHASE}" == "Running" ]]; then
-        AUTH_READY=true
-        break
-      fi
-      echo -e "  Authentik pod: ${AUTH_PHASE:-Pending} — ${AUTH_ELAPSED}s elapsed"
-      sleep 15
-      AUTH_ELAPSED=$((AUTH_ELAPSED + 15))
-    done
+    if kubectl wait --for=condition=Ready pod -n authentik \
+        -l app.kubernetes.io/component=server \
+        --timeout=300s &>/dev/null; then
+      AUTH_READY=true
+    fi
 
     if [[ "${AUTH_READY}" == "false" ]]; then
-      warn "Authentik not ready after ${AUTH_TIMEOUT}s"
+      warn "Authentik pod not Ready after 300s"
       warn "Once ready, run: cd terraform && terraform apply"
     else
-      success "Authentik pod is Running"
+      success "Authentik pod is Ready"
 
       info "Starting port-forward to Authentik (localhost:9000)..."
       pkill -f "kubectl port-forward.*authentik.*9000" 2>/dev/null || true
       kubectl port-forward -n authentik svc/authentik-server 9000:80 &>/dev/null &
       PF_PID=$!
 
-      info "Waiting for Authentik API to respond..."
-      # Authentik's pod reaches "Running" quickly but its HTTP endpoint takes
-      # significantly longer on a fresh cluster — initial database migration
-      # plus worker init routinely runs 2-3 minutes. 120s was short enough
-      # that terraform would get skipped, leaving Temporal's oauth2-proxy
-      # stuck in CrashLoopBackOff with no OIDC provider to discover.
-      API_TIMEOUT=360
+      info "Waiting for port-forward to accept connections..."
+      # Pod is already Ready, so this is just waiting for kubectl port-forward
+      # itself to establish its local listener — a few seconds at most.
+      API_TIMEOUT=60
       API_ELAPSED=0
       API_READY=false
       while [[ ${API_ELAPSED} -lt ${API_TIMEOUT} ]]; do
@@ -403,8 +398,8 @@ print(t['stringData']['${key}'])
           break
         fi
         echo -e "  Authentik API: HTTP ${HTTP_STATUS} — ${API_ELAPSED}s elapsed"
-        sleep 10
-        API_ELAPSED=$((API_ELAPSED + 10))
+        sleep 5
+        API_ELAPSED=$((API_ELAPSED + 5))
       done
 
       if [[ "${API_READY}" == "false" ]]; then
