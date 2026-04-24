@@ -6,7 +6,7 @@ master:
     size: 1Gi
 
 volume:
-  replicas: 3
+  replicas: 1
   persistence:
     enabled: true
     storageClass: local-path

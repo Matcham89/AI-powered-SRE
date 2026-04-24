@@ -20,7 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ARGOCD_VERSION="v3.3.8"
-ARGOCD_INSTALL_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/ha/install.yaml"
+ARGOCD_INSTALL_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
 SOPS_OPERATOR_CHART="sops-secrets-operator/sops-secrets-operator"
 SOPS_OPERATOR_REPO="https://isindir.github.io/sops-secrets-operator/"
 SOPS_OPERATOR_VALUES="${SCRIPT_DIR}/manifests/sops-operator-values.yaml"
@@ -185,10 +185,10 @@ fi
 success "sops-age secret created in sops-operator namespace"
 
 # ─── Step 6: Install ArgoCD ────────────────────────────────────────────────────
-step "6/9 Installing ArgoCD ${ARGOCD_VERSION} (HA)"
+step "6/9 Installing ArgoCD ${ARGOCD_VERSION}"
 
-info "Applying ArgoCD HA manifest..."
-run "kubectl apply -n argocd -f '${ARGOCD_INSTALL_URL}'"
+info "Applying ArgoCD manifest (server-side apply to handle large CRDs)..."
+run "kubectl apply -n argocd --server-side -f '${ARGOCD_INSTALL_URL}'"
 success "ArgoCD manifest applied"
 
 info "Waiting for ArgoCD deployments to be ready (up to 5 minutes)..."
