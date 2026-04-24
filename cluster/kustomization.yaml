@@ -32,6 +32,7 @@ resources:
   - apps/alloy-app.yaml               # Step 10 — Grafana Alloy
   - apps/beyla-app.yaml               # Step 10 — Grafana Beyla (eBPF)
   - apps/grafana-app.yaml             # Step 10 — Grafana
+  - apps/kagent-crds-app.yaml           # Step 11 — kagent CRDs (must sync before kagent)
   - apps/kagent-app.yaml               # Step 11 — kagent (AI SRE)
   - apps/khook-app.yaml               # Step 11 — khook (K8s event watcher)
   - apps/github-mcp-app.yaml          # Step 11 — GitHub MCP agent
