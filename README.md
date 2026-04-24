@@ -8,19 +8,38 @@ Kubernetes platform that self-heals: when a pod crashes, a Claude-powered agent 
 
 ## Prerequisites
 
-| Tool | Install |
-|------|---------|
-| `kubectl` | https://kubernetes.io/docs/tasks/tools/ |
-| `helm` | https://helm.sh/docs/intro/install/ |
-| `sops` | https://github.com/getsops/sops/releases |
-| `age` | https://github.com/FiloSottile/age/releases |
-| `terraform` | https://developer.hashicorp.com/terraform/install |
-| `curl`, `sudo` | system packages |
+### Tools
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `kubectl` | Talk to the cluster | https://kubernetes.io/docs/tasks/tools/ |
+| `helm` | Install ArgoCD + SOPS Operator charts | https://helm.sh/docs/intro/install/ |
+| `sops` | Decrypt the bootstrap repo credentials locally | https://github.com/getsops/sops/releases |
+| `age` | Encryption backend used by SOPS | https://github.com/FiloSottile/age/releases |
+| `python3` | Parses decrypted SOPS JSON during bootstrap (stdlib only — no `pip install` needed) | preinstalled on macOS |
+| `terraform` | Configures Authentik OIDC providers (skipped with a warning if missing) | https://developer.hashicorp.com/terraform/install |
+| `curl`, `sudo` | k3s installer + `/etc/hosts` update | system packages |
 
 macOS shortcut:
 ```bash
 brew install kubectl helm sops age terraform
 ```
+
+### Kubernetes cluster
+
+The script installs k3s automatically if no cluster is reachable. If you already have a cluster running (Rancher Desktop, Docker Desktop, kind, etc.), the script detects it and uses your current `kubectl` context — no k3s install attempted.
+
+### Tested environment
+
+Verified end-to-end on:
+
+- **Rancher Desktop** on an Apple Mac (Apple Silicon)
+- **6 CPU / 14 GB memory** allocated to the VM
+- Kubernetes backend: k3s (Rancher Desktop default)
+
+The platform runs ~25 ArgoCD applications including the full LGTM observability stack, Authentik, Temporal, CNPG, SeaweedFS, and kagent. Smaller VM allocations (under 12 GB) are likely to hit memory pressure during initial sync.
+
+### Age private key
 
 You also need the **Age private key** for this repo — obtain it from the repo owner. Place it at the default location:
 
