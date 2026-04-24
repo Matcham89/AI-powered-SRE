@@ -18,7 +18,7 @@ resource "authentik_provider_oauth2" "argocd" {
   allowed_redirect_uris = [
     {
       matching_mode = "strict"
-      url           = "http://argocd.local:32170/api/dex/callback"
+      url           = "http://argocd.demo:32170/api/dex/callback"
     },
     {
       matching_mode = "strict"
@@ -35,6 +35,6 @@ resource "authentik_application" "argocd" {
   name              = "ArgoCD"
   slug              = "argocd"
   protocol_provider = authentik_provider_oauth2.argocd.id
-  meta_launch_url   = "http://argocd.local:32170"
+  meta_launch_url   = "http://argocd.demo:32170"
   open_in_new_tab   = true
 }

@@ -113,10 +113,10 @@ After bootstrap completes, the script prints your SSO username, password, NodePo
 
 | Service | URL | Login |
 |---------|-----|-------|
-| ArgoCD | `https://argocd.local:<port>` | SSO |
-| Grafana | `https://grafana.local:<port>` | SSO |
-| Authentik | `https://auth.local:<port>` | SSO |
-| Temporal | `https://temporal.local:<port>` | SSO |
+| ArgoCD | `https://argocd.demo:<port>` | SSO |
+| Grafana | `https://grafana.demo:<port>` | SSO |
+| Authentik | `https://auth.demo:<port>` | SSO |
+| Temporal | `https://temporal.demo:<port>` | SSO |
 
 **ArgoCD native admin password** (if you need it before SSO is configured):
 ```bash
@@ -134,7 +134,7 @@ Once the platform is up, trigger a new execution one of two ways:
 
 ### Option A — Temporal UI (web)
 
-1. Open `https://temporal.local:<port>` and log in via SSO.
+1. Open `https://temporal.demo:<port>` and log in via SSO.
 2. Make sure the **Namespace** dropdown is set to `default`.
 3. Click **Start Workflow** (top right).
 4. Fill in:
@@ -192,10 +192,10 @@ All UIs are exposed through a single Envoy Gateway NodePort. TLS is terminated a
 
 ```
 Browser → Envoy Gateway (NodePort :32170)
-             ├── argocd.local   → argocd-server (argocd ns)
-             ├── grafana.local  → grafana (observability ns)
-             ├── auth.local     → authentik-server (authentik ns)
-             └── temporal.local → temporal-ui (temporal ns)
+             ├── argocd.demo   → argocd-server (argocd ns)
+             ├── grafana.demo  → grafana (observability ns)
+             ├── auth.demo     → authentik-server (authentik ns)
+             └── temporal.demo → temporal-ui (temporal ns)
 ```
 
 ### SSO

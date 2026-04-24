@@ -18,7 +18,7 @@ resource "authentik_provider_oauth2" "temporal" {
   allowed_redirect_uris = [
     {
       matching_mode = "strict"
-      url           = "http://temporal.local:32170/oauth2/callback"
+      url           = "http://temporal.demo:32170/oauth2/callback"
     }
   ]
 
@@ -31,6 +31,6 @@ resource "authentik_application" "temporal" {
   name              = "Temporal"
   slug              = "temporal"
   protocol_provider = authentik_provider_oauth2.temporal.id
-  meta_launch_url   = "http://temporal.local:32170"
+  meta_launch_url   = "http://temporal.demo:32170"
   open_in_new_tab   = true
 }

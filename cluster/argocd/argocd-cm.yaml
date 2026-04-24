@@ -10,12 +10,12 @@ data:
   # Use annotation-based tracking — avoids label conflicts with Helm-managed resources
   application.resourceTrackingMethod: annotation
 
-  url: http://argocd.local:32170
+  url: http://argocd.demo:32170
 
   dex.config: |
     connectors:
     - config:
-        issuer: http://auth.local:32170/application/o/argocd/
+        issuer: http://auth.demo:32170/application/o/argocd/
         clientID: argocd
         clientSecret: $dex.authentik.clientSecret
         insecureEnableGroups: true

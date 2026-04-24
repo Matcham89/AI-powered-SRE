@@ -10,7 +10,7 @@ spec:
       name: platform-gateway
       namespace: envoy-gateway-system
   hostnames:
-    - temporal.local
+    - temporal.demo
   rules:
     - matches:
         - path:

@@ -18,7 +18,7 @@ resource "authentik_provider_oauth2" "grafana" {
   allowed_redirect_uris = [
     {
       matching_mode = "strict"
-      url           = "http://grafana.local:32170/login/generic_oauth"
+      url           = "http://grafana.demo:32170/login/generic_oauth"
     }
   ]
 
@@ -31,6 +31,6 @@ resource "authentik_application" "grafana" {
   name              = "Grafana"
   slug              = "grafana"
   protocol_provider = authentik_provider_oauth2.grafana.id
-  meta_launch_url   = "http://grafana.local:32170"
+  meta_launch_url   = "http://grafana.demo:32170"
   open_in_new_tab   = true
 }

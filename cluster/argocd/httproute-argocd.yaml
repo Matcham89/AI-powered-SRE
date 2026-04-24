@@ -14,7 +14,7 @@ spec:
       name: platform-gateway
       namespace: envoy-gateway-system
   hostnames:
-    - argocd.local
+    - argocd.demo
   rules:
     - matches:
         - path:

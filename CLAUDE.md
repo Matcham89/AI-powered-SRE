@@ -92,7 +92,7 @@ All UIs are exposed via Envoy Gateway HTTPRoute CRDs (not Ingress). Pattern:
 ```yaml
 # platform/<component>/httproute-<name>.yaml
 parentRefs: [{name: platform-gateway, namespace: envoy-gateway}]
-hostnames: ["<service>.local"]
+hostnames: ["<service>.demo"]
 rules: [{backendRefs: [{name: <svc>, port: 80}]}]
 ```
 
@@ -114,7 +114,7 @@ Copy `.env.example` → `.env` before bootstrapping:
 Services are accessible via NodePort at port `32170`. Add these to `/etc/hosts` (pointing to k3s bridge IP, usually `172.20.0.2` on macOS):
 
 ```
-argocd.local, grafana.local, auth.local, temporal.local, seaweedfs-filer.local, sample-api.local
+argocd.demo, grafana.demo, auth.demo, temporal.demo, seaweedfs-filer.demo, sample-api.demo
 ```
 
 Step 11 of `install.sh` discovers the correct IP + NodePort and prints a ready-to-paste `sudo` command — run it yourself to update `/etc/hosts`.

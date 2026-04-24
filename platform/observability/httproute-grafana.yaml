@@ -10,7 +10,7 @@ spec:
       name: platform-gateway
       namespace: envoy-gateway-system
   hostnames:
-    - grafana.local
+    - grafana.demo
   rules:
     - matches:
         - path:

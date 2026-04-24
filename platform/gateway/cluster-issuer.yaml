@@ -24,7 +24,7 @@ metadata:
 spec:
   selfSigned: {}
 ---
-# Wildcard certificate for all platform UIs (argocd.local, grafana.local, etc.)
+# Wildcard certificate for all platform UIs (argocd.demo, grafana.demo, etc.)
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -35,10 +35,10 @@ spec:
   issuerRef:
     name: selfsigned
     kind: ClusterIssuer
-  commonName: "*.local"
+  commonName: "*.demo"
   dnsNames:
-    - "*.local"
-    - argocd.local
-    - grafana.local
-    - auth.local
-    - temporal.local
+    - "*.demo"
+    - argocd.demo
+    - grafana.demo
+    - auth.demo
+    - temporal.demo

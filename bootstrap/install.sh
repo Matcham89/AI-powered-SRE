@@ -519,12 +519,12 @@ else
       fi
     done
     HOSTS_IP="${HOSTS_IP:-${NODE_IP:-127.0.0.1}}"
-    info "Host IP for .local entries: ${HOSTS_IP}"
+    info "Host IP for .demo entries: ${HOSTS_IP}"
 
     # Classify each required hostname against current /etc/hosts state
     HOSTS_MISSING=()
     HOSTS_WRONG=()
-    for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
+    for hostname in argocd.demo grafana.demo auth.demo temporal.demo sample-api.demo; do
       if grep -qE "^[[:space:]]*${HOSTS_IP}[[:space:]]+${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
         continue  # already correct
       elif grep -qE "[[:space:]]${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
@@ -581,14 +581,14 @@ if [[ -n "${DEMO_PASS}" ]]; then
 fi
 
 echo -e "  ${BOLD}Service URLs:${NC}"
-echo -e "    https://argocd.local:${_PORT}     — GitOps dashboard"
-echo -e "    https://grafana.local:${_PORT}    — Observability (Loki/Tempo/Mimir)"
-echo -e "    https://auth.local:${_PORT}       — Authentik SSO admin"
-echo -e "    https://temporal.local:${_PORT}   — Workflow UI"
+echo -e "    https://argocd.demo:${_PORT}     — GitOps dashboard"
+echo -e "    https://grafana.demo:${_PORT}    — Observability (Loki/Tempo/Mimir)"
+echo -e "    https://auth.demo:${_PORT}       — Authentik SSO admin"
+echo -e "    https://temporal.demo:${_PORT}   — Workflow UI"
 echo ""
 
 echo -e "  ${BOLD}/etc/hosts entries (${_IP}):${NC}"
-for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
+for hostname in argocd.demo grafana.demo auth.demo temporal.demo sample-api.demo; do
   echo -e "    ${_IP}  ${hostname}"
 done
 echo ""
@@ -663,8 +663,8 @@ fi
 # ── e2e-3: Grafana health ─────────────────────────────────────────────────────
 step "e2e-3 Grafana /api/health"
 GRAFANA_HEALTH=$(curl -sk \
-  --resolve "grafana.local:${HTTPS_NODEPORT}:127.0.0.1" \
-  "https://grafana.local:${HTTPS_NODEPORT}/api/health" 2>/dev/null || echo "")
+  --resolve "grafana.demo:${HTTPS_NODEPORT}:127.0.0.1" \
+  "https://grafana.demo:${HTTPS_NODEPORT}/api/health" 2>/dev/null || echo "")
 # Grafana v12+ pretty-prints with a space after the colon; allow either form.
 if echo "${GRAFANA_HEALTH}" | grep -qE '"database"[[:space:]]*:[[:space:]]*"ok"'; then
   e2e_pass "Grafana health: database=ok"
@@ -675,8 +675,8 @@ fi
 # ── e2e-4: Temporal UI ───────────────────────────────────────────────────────
 step "e2e-4 Temporal UI"
 TEMPORAL_RESP=$(curl -sk \
-  --resolve "temporal.local:${HTTPS_NODEPORT}:127.0.0.1" \
-  "https://temporal.local:${HTTPS_NODEPORT}/" 2>/dev/null || echo "")
+  --resolve "temporal.demo:${HTTPS_NODEPORT}:127.0.0.1" \
+  "https://temporal.demo:${HTTPS_NODEPORT}/" 2>/dev/null || echo "")
 if echo "${TEMPORAL_RESP}" | grep -qi "temporal"; then
   e2e_pass "Temporal UI responding"
 else
@@ -696,8 +696,8 @@ fi
 # ── e2e-8: Sample API ────────────────────────────────────────────────────────
 step "e2e-6 Sample API"
 SAMPLE_API_RESP=$(curl -sk \
-  --resolve "sample-api.local:${HTTPS_NODEPORT}:127.0.0.1" \
-  "https://sample-api.local:${HTTPS_NODEPORT}/" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
+  --resolve "sample-api.demo:${HTTPS_NODEPORT}:127.0.0.1" \
+  "https://sample-api.demo:${HTTPS_NODEPORT}/" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
 if [[ "${SAMPLE_API_RESP}" == "ok" ]]; then
   e2e_pass "Sample API: {\"status\":\"ok\"}"
 else

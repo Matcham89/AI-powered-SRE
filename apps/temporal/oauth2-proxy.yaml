@@ -15,7 +15,7 @@ spec:
       labels:
         app: oauth2-proxy
     spec:
-      # auth.local resolves via CoreDNS (cluster/argocd/coredns-custom.yaml
+      # auth.demo resolves via CoreDNS (cluster/argocd/coredns-custom.yaml
       # rewrites it to authentik-internal.authentik.svc.cluster.local:32170).
       # A hostAliases entry here would override that rewrite with an
       # environment-specific node IP that breaks on any other host.
@@ -24,16 +24,16 @@ spec:
           image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
           args:
             - --provider=oidc
-            - --oidc-issuer-url=http://auth.local:32170/application/o/temporal/
+            - --oidc-issuer-url=http://auth.demo:32170/application/o/temporal/
             - --insecure-oidc-allow-unverified-email=true
             - --insecure-oidc-skip-issuer-verification=true
             - --email-domain=*
             - --upstream=http://temporal-web.temporal.svc:8080
             - --http-address=0.0.0.0:4180
-            - --redirect-url=http://temporal.local:32170/oauth2/callback
+            - --redirect-url=http://temporal.demo:32170/oauth2/callback
             - --skip-provider-button=true
             - --cookie-secure=false
-            - --cookie-domain=temporal.local
+            - --cookie-domain=temporal.demo
             - --code-challenge-method=S256
           env:
             - name: OAUTH2_PROXY_CLIENT_ID

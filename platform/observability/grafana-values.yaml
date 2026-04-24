@@ -10,7 +10,7 @@ persistence:
 
 grafana.ini:
   server:
-    root_url: http://grafana.local:32170
+    root_url: http://grafana.demo:32170
   auth.generic_oauth:
     enabled: true
     name: Authentik
@@ -18,13 +18,13 @@ grafana.ini:
     client_id: grafana
     client_secret: ${GRAFANA_OIDC_CLIENT_SECRET}
     scopes: openid profile email groups
-    auth_url: http://auth.local:32170/application/o/authorize/
+    auth_url: http://auth.demo:32170/application/o/authorize/
     token_url: http://authentik-server.authentik.svc/application/o/token/
     api_url: http://authentik-server.authentik.svc/application/o/userinfo/
     role_attribute_path: "contains(groups, 'Grafana Admins') && 'Admin' || 'Viewer'"
   auth:
     oauth_auto_login: true
-    signout_redirect_url: http://auth.local:32170/application/o/grafana/end-session/
+    signout_redirect_url: http://auth.demo:32170/application/o/grafana/end-session/
   auth.basic:
     enabled: false
 
