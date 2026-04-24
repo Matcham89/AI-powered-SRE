@@ -131,10 +131,12 @@ alloy:
       targetPort: 4318
       protocol: TCP
 
-  # /var/log is where kubelet drops pod logs — the filesystem-based
-  # log collection above tails symlinks under /var/log/pods.
+  # /var/log/pods/<ns>_<pod>_<uid>/<container>/0.log is actually a symlink
+  # into /var/lib/docker/containers/<id>/<id>-json.log (Rancher Desktop uses
+  # dockerd); mount both so the symlink resolves inside Alloy's pod.
   mounts:
     varlog: true
+    dockercontainers: true
 
   resources:
     requests:
