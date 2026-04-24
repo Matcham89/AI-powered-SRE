@@ -18,6 +18,7 @@ spec:
         name: temporal-db-app
       postInitSQL:
         - CREATE DATABASE temporal_visibility OWNER temporal;
+        - ALTER USER temporal CREATEDB;
   superuserSecret:
     name: temporal-db-superuser
   storage:
