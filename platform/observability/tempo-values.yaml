@@ -20,6 +20,9 @@ tempo:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://mimir-gateway.observability.svc/api/v1/push"
 
 persistence:
   enabled: true
