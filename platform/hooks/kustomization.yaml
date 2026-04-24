@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - khook-config.yaml
+  - sample-api-hook.yaml

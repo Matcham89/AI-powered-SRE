@@ -1,0 +1,39 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Hook
+metadata:
+  name: sample-api-sre-responder
+  namespace: sample-api
+spec:
+  eventConfigurations:
+    - eventType: pod-restart
+      agentRef:
+        name: ai-sre-agent
+        namespace: kagent
+      prompt: |
+        INCIDENT: Pod {{.ResourceName}} in namespace {{.Namespace}} restarted at {{.EventTime}}.
+        This may be a CrashLoopBackOff. Investigate immediately:
+        1. Check pod logs for crash reason (last 100 lines)
+        2. Check recent events in the namespace
+        3. Check if there was a recent ArgoCD deployment
+        4. Determine root cause and post an RCA GitHub Issue in Matcham89/AI-powered-SRE
+    - eventType: oom-kill
+      agentRef:
+        name: ai-sre-agent
+        namespace: kagent
+      prompt: |
+        CRITICAL: Pod {{.ResourceName}} in namespace {{.Namespace}} was OOM killed at {{.EventTime}}.
+        Investigate:
+        1. Check pod memory usage history from Mimir metrics
+        2. Review pod logs before the kill
+        3. Check if memory limit is undersized
+        4. Post an RCA GitHub Issue in Matcham89/AI-powered-SRE with fix recommendation
+    - eventType: probe-failed
+      agentRef:
+        name: ai-sre-agent
+        namespace: kagent
+      prompt: |
+        INCIDENT: Pod {{.ResourceName}} in namespace {{.Namespace}} failed its health probe at {{.EventTime}}.
+        Investigate:
+        1. Check pod logs for errors
+        2. Verify service dependencies are healthy
+        3. Post an RCA GitHub Issue in Matcham89/AI-powered-SRE
