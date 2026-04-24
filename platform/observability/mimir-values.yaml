@@ -1,13 +1,13 @@
 mimir:
   structuredConfig:
-    common:
-      replication_factor: 1
     ingest_storage:
       enabled: false
       kafka:
         address: "localhost:9092"
     ingester:
       push_grpc_method_enabled: true
+      ring:
+        replication_factor: 1
     common:
       storage:
         backend: s3
