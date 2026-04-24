@@ -59,6 +59,13 @@ spec:
               kubernetes.io/metadata.name: seaweedfs
       ports:
         - port: 8333   # SeaweedFS S3 API
+    # Grafana OIDC token exchange → Authentik
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
+      ports:
+        - port: 80
     # Alloy scrapes all namespaces for metrics
     - ports:
         - port: 443
