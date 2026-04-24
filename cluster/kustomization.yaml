@@ -34,6 +34,7 @@ resources:
   - apps/grafana-app.yaml             # Step 10 — Grafana
   - apps/kagent-crds-app.yaml           # Step 11 — kagent CRDs (must sync before kagent)
   - apps/kagent-app.yaml               # Step 11 — kagent (AI SRE)
+  - apps/khook-crds-app.yaml          # Step 11 — khook CRDs (must sync before khook)
   - apps/khook-app.yaml               # Step 11 — khook (K8s event watcher)
   - apps/github-mcp-app.yaml          # Step 11 — GitHub MCP agent
   - apps/cnpg-app.yaml                 # Step 12 — CloudNative-PG operator (prereq)

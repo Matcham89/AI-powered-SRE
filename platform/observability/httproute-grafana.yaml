@@ -5,7 +5,9 @@ metadata:
   namespace: observability
 spec:
   parentRefs:
-    - name: platform-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform-gateway
       namespace: envoy-gateway-system
   hostnames:
     - grafana.local
@@ -15,5 +17,8 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: grafana
+        - group: ""
+          kind: Service
+          name: grafana
           port: 80
+          weight: 1

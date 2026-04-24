@@ -55,6 +55,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - kind: Secret
+          - group: ""
+            kind: Secret
             name: platform-tls
             namespace: envoy-gateway-system

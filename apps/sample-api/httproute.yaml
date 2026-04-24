@@ -5,7 +5,9 @@ metadata:
   namespace: sample-api
 spec:
   parentRefs:
-    - name: platform-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform-gateway
       namespace: envoy-gateway-system
   hostnames:
     - sample-api.local
@@ -15,5 +17,8 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: sample-api
+        - group: ""
+          kind: Service
+          name: sample-api
           port: 80
+          weight: 1

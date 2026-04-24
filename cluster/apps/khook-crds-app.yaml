@@ -1,21 +1,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: khook
+  name: khook-crds
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: default
   sources:
-    - repoURL: oci://ghcr.io/kagent-dev/khook/helm/khook
-      chart: khook
+    - repoURL: oci://ghcr.io/kagent-dev/khook/helm/khook-crds
+      chart: khook-crds
       targetRevision: "0.0.4"
-    - repoURL: https://github.com/Matcham89/AI-powered-SRE
-      targetRevision: HEAD
-      path: platform/hooks
   destination:
     server: https://kubernetes.default.svc
     namespace: kagent
@@ -26,3 +23,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
