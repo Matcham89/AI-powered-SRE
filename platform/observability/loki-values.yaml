@@ -53,6 +53,10 @@ chunksCache:
 resultsCache:
   enabled: false
 
+sidecar:
+  rules:
+    enabled: false
+
 test:
   enabled: false
 lokiCanary:

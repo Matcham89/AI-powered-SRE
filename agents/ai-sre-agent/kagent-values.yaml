@@ -55,3 +55,7 @@ agents:
     enabled: false
   cilium-debug-agent:
     enabled: false
+
+kagent-tools:
+  grafana-mcp:
+    enabled: false
