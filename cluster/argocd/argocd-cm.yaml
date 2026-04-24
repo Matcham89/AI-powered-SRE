@@ -10,22 +10,18 @@ data:
   # Use annotation-based tracking — avoids label conflicts with Helm-managed resources
   application.resourceTrackingMethod: annotation
 
-  # Base URL used for UI links in notifications and the web UI
-  # Update this once Envoy Gateway HTTPRoute is configured (Step 7)
-  url: https://argocd.local
+  url: http://argocd.local:32170
 
-  # OIDC integration with Authentik — wired in Step 8
-  # Uncomment and populate after Authentik is deployed
-  # oidc.config: |
-  #   name: Authentik
-  #   issuer: https://auth.local/application/o/argocd/
-  #   clientID: <argocd-client-id-from-authentik>
-  #   clientSecret: $oidc.authentik.clientSecret
-  #   requestedScopes:
-  #     - openid
-  #     - profile
-  #     - email
-  #     - groups
+  oidc.config: |
+    name: Authentik
+    issuer: http://auth.local:32170/application/o/argocd/
+    clientID: argocd
+    clientSecret: $oidc.authentik.clientSecret
+    requestedScopes:
+      - openid
+      - profile
+      - email
+      - groups
 
   # Allow health checks on Gateway API resources (added in Step 7)
   resource.customizations.health.gateway.networking.k8s.io_HTTPRoute: |

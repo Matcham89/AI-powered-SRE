@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  platform-hosts.override: |
+    hosts {
+      192.168.5.15 auth.local
+      192.168.5.15 argocd.local
+      192.168.5.15 grafana.local
+      192.168.5.15 temporal.local
+      fallthrough
+    }

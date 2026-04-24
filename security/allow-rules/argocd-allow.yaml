@@ -42,3 +42,6 @@ spec:
     - ports:
         - port: 443
         - port: 6443
+    # Authentik OIDC via Envoy Gateway NodePort (auth.local:32170)
+    - ports:
+        - port: 32170

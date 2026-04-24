@@ -22,6 +22,12 @@ variable "temporal_client_secret" {
   sensitive   = true
 }
 
+variable "argocd_client_secret" {
+  description = "OIDC client secret for ArgoCD. Must match the value patched into argocd-secret."
+  type        = string
+  sensitive   = true
+}
+
 variable "admin_password" {
   description = "Password for the demo-user account in Authentik"
   type        = string
