@@ -300,120 +300,8 @@ info "Applying cluster/root-app.yaml..."
 run "kubectl apply -f '${ROOT_APP}'"
 success "Root app applied — ArgoCD will now sync the platform from git"
 
-# ─── Step 9: Wait for all apps Synced+Healthy ─────────────────────────────────
-step "9/11 Waiting for all ArgoCD apps to be Synced+Healthy"
-
-EXPECTED_APPS=(
-  root sops-secrets-operator envoy-gateway gateway-resources cert-manager security-policies
-  authentik authentik-routes seaweedfs
-  loki tempo mimir alloy kube-state-metrics node-exporter beyla grafana
-  kagent-crds kagent khook-crds khook github-mcp-agent
-  cnpg temporal sample-api
-)
-
-if [[ "${DRY_RUN}" == "false" ]]; then
-  info "Polling ArgoCD apps (up to 25 minutes, ${#EXPECTED_APPS[@]} apps expected)..."
-  TIMEOUT=1500
-  ELAPSED=0
-  INTERVAL=20
-
-  while [[ ${ELAPSED} -lt ${TIMEOUT} ]]; do
-    ALL_OK=true
-    NOT_READY=()
-    for app in "${EXPECTED_APPS[@]}"; do
-      SYNC=$(kubectl get application "${app}" -n argocd \
-        -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Missing")
-      HEALTH=$(kubectl get application "${app}" -n argocd \
-        -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Missing")
-      if [[ "${SYNC}" != "Synced" ]] || [[ "${HEALTH}" != "Healthy" ]]; then
-        ALL_OK=false
-        NOT_READY+=("${app}(${SYNC}/${HEALTH})")
-      fi
-    done
-
-    if [[ "${ALL_OK}" == "true" ]]; then
-      success "All ${#EXPECTED_APPS[@]} apps Synced+Healthy"
-      break
-    fi
-
-    echo -e "  Waiting: ${NOT_READY[*]} | Elapsed: ${ELAPSED}s"
-    sleep ${INTERVAL}
-    ELAPSED=$((ELAPSED + INTERVAL))
-  done
-
-  if [[ "${ALL_OK}" != "true" ]]; then
-    warn "Not all apps healthy after ${TIMEOUT}s. Still pending: ${NOT_READY[*]}"
-    warn "Run: kubectl get applications -n argocd"
-  fi
-fi
-
-# ─── Step 10: NodePort discovery + /etc/hosts guidance ───────────────────────
-step "10/11 Discovering NodePort and computing /etc/hosts entries"
-
-if [[ "${DRY_RUN}" == "true" ]]; then
-  dryrun "kubectl get svc -n envoy-gateway-system  # discover NodePorts"
-  dryrun "# compare /etc/hosts against required entries, print sudo command if changes needed"
-else
-  HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
-    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
-  HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
-    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
-
-  if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
-    success "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
-
-    NODE_IP=$(kubectl get nodes \
-      -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-    BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
-    HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
-    info "Host IP for .local entries: ${HOSTS_IP}"
-
-    # Classify each required hostname against current /etc/hosts state
-    HOSTS_MISSING=()
-    HOSTS_WRONG=()
-    for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
-      if grep -qE "^[[:space:]]*${HOSTS_IP}[[:space:]]+${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
-        continue  # already correct
-      elif grep -qE "[[:space:]]${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
-        HOSTS_WRONG+=("${hostname}")
-      else
-        HOSTS_MISSING+=("${hostname}")
-      fi
-    done
-
-    if [[ ${#HOSTS_MISSING[@]} -eq 0 ]] && [[ ${#HOSTS_WRONG[@]} -eq 0 ]]; then
-      success "/etc/hosts already contains all required entries pointing to ${HOSTS_IP}"
-    else
-      echo ""
-      warn "/etc/hosts needs updating — run the command(s) below (requires sudo):"
-      echo ""
-      if [[ ${#HOSTS_WRONG[@]} -gt 0 ]]; then
-        echo -e "  ${BOLD}# Remove stale entries pointing to a different IP:${NC}"
-        for h in "${HOSTS_WRONG[@]}"; do
-          echo "  sudo sed -i '' \"/[[:space:]]${h}\$/d\" /etc/hosts"
-        done
-        echo ""
-      fi
-      echo -e "  ${BOLD}# Append the required entries:${NC}"
-      echo "  sudo tee -a /etc/hosts >/dev/null <<'EOF'"
-      for h in "${HOSTS_MISSING[@]}" "${HOSTS_WRONG[@]}"; do
-        echo "  ${HOSTS_IP}  ${h}"
-      done
-      echo "  EOF"
-      echo ""
-    fi
-  else
-    warn "Could not discover Envoy Gateway NodePorts — cannot compute /etc/hosts entries"
-    warn "Check: kubectl get svc -n envoy-gateway-system"
-    HTTP_NODEPORT=32170
-    HTTPS_NODEPORT=32170
-  fi
-fi
-
-# ─── Step 11: Wait for Authentik + run Terraform ──────────────────────────────
-step "11/11 Configuring SSO (Terraform → Authentik)"
+# ─── Step 9: Wait for Authentik + run Terraform ──────────────────────────────
+step "9/11 Configuring SSO (Terraform → Authentik)"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   dryrun "sops --decrypt <secrets>  # extract TF_VAR_* from SOPS"
@@ -533,6 +421,118 @@ print(t['stringData']['${key}'])
         kill "${PF_PID}" 2>/dev/null || true
       fi
     fi
+  fi
+fi
+
+# ─── Step 10: Wait for all apps Synced+Healthy ─────────────────────────────────
+step "10/11 Waiting for all ArgoCD apps to be Synced+Healthy"
+
+EXPECTED_APPS=(
+  root sops-secrets-operator envoy-gateway gateway-resources cert-manager security-policies
+  authentik authentik-routes seaweedfs
+  loki tempo mimir alloy kube-state-metrics node-exporter beyla grafana
+  kagent-crds kagent khook-crds khook github-mcp-agent
+  cnpg temporal sample-api
+)
+
+if [[ "${DRY_RUN}" == "false" ]]; then
+  info "Polling ArgoCD apps (up to 25 minutes, ${#EXPECTED_APPS[@]} apps expected)..."
+  TIMEOUT=1500
+  ELAPSED=0
+  INTERVAL=20
+
+  while [[ ${ELAPSED} -lt ${TIMEOUT} ]]; do
+    ALL_OK=true
+    NOT_READY=()
+    for app in "${EXPECTED_APPS[@]}"; do
+      SYNC=$(kubectl get application "${app}" -n argocd \
+        -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Missing")
+      HEALTH=$(kubectl get application "${app}" -n argocd \
+        -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Missing")
+      if [[ "${SYNC}" != "Synced" ]] || [[ "${HEALTH}" != "Healthy" ]]; then
+        ALL_OK=false
+        NOT_READY+=("${app}(${SYNC}/${HEALTH})")
+      fi
+    done
+
+    if [[ "${ALL_OK}" == "true" ]]; then
+      success "All ${#EXPECTED_APPS[@]} apps Synced+Healthy"
+      break
+    fi
+
+    echo -e "  Waiting: ${NOT_READY[*]} | Elapsed: ${ELAPSED}s"
+    sleep ${INTERVAL}
+    ELAPSED=$((ELAPSED + INTERVAL))
+  done
+
+  if [[ "${ALL_OK}" != "true" ]]; then
+    warn "Not all apps healthy after ${TIMEOUT}s. Still pending: ${NOT_READY[*]}"
+    warn "Run: kubectl get applications -n argocd"
+  fi
+fi
+
+# ─── Step 11: NodePort discovery + /etc/hosts guidance ───────────────────────
+step "11/11 Discovering NodePort and computing /etc/hosts entries"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  dryrun "kubectl get svc -n envoy-gateway-system  # discover NodePorts"
+  dryrun "# compare /etc/hosts against required entries, print sudo command if changes needed"
+else
+  HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
+  HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+
+  if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
+    success "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
+
+    NODE_IP=$(kubectl get nodes \
+      -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+    BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
+    HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
+    info "Host IP for .local entries: ${HOSTS_IP}"
+
+    # Classify each required hostname against current /etc/hosts state
+    HOSTS_MISSING=()
+    HOSTS_WRONG=()
+    for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
+      if grep -qE "^[[:space:]]*${HOSTS_IP}[[:space:]]+${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
+        continue  # already correct
+      elif grep -qE "[[:space:]]${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
+        HOSTS_WRONG+=("${hostname}")
+      else
+        HOSTS_MISSING+=("${hostname}")
+      fi
+    done
+
+    if [[ ${#HOSTS_MISSING[@]} -eq 0 ]] && [[ ${#HOSTS_WRONG[@]} -eq 0 ]]; then
+      success "/etc/hosts already contains all required entries pointing to ${HOSTS_IP}"
+    else
+      echo ""
+      warn "/etc/hosts needs updating — run the command(s) below (requires sudo):"
+      echo ""
+      if [[ ${#HOSTS_WRONG[@]} -gt 0 ]]; then
+        echo -e "  ${BOLD}# Remove stale entries pointing to a different IP:${NC}"
+        for h in "${HOSTS_WRONG[@]}"; do
+          echo "  sudo sed -i '' \"/[[:space:]]${h}\$/d\" /etc/hosts"
+        done
+        echo ""
+      fi
+      echo -e "  ${BOLD}# Append the required entries:${NC}"
+      echo "  sudo tee -a /etc/hosts >/dev/null <<'EOF'"
+      for h in "${HOSTS_MISSING[@]}" "${HOSTS_WRONG[@]}"; do
+        echo "  ${HOSTS_IP}  ${h}"
+      done
+      echo "  EOF"
+      echo ""
+    fi
+  else
+    warn "Could not discover Envoy Gateway NodePorts — cannot compute /etc/hosts entries"
+    warn "Check: kubectl get svc -n envoy-gateway-system"
+    HTTP_NODEPORT=32170
+    HTTPS_NODEPORT=32170
   fi
 fi
 
