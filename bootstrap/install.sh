@@ -215,6 +215,41 @@ run "helm upgrade --install sops-secrets-operator ${SOPS_OPERATOR_CHART} \
 
 success "SOPS Secrets Operator installed"
 
+# ─── Step 7b: Bootstrap ArgoCD repo credentials ───────────────────────────────
+# The repo is private. ArgoCD needs credentials before it can clone the repo
+# to read the SopsSecrets that would normally create those credentials.
+# Solution: apply the registry SopsSecrets directly now (SOPS Operator is
+# already running and will decrypt them into native K8s Secrets immediately).
+step "7b/9 Bootstrapping ArgoCD repo + cluster credentials"
+
+REGISTRY_DIR="${REPO_ROOT}/cluster/registry"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  dryrun "kubectl apply -f '${REGISTRY_DIR}/repo-credentials.enc.yaml'"
+  dryrun "kubectl apply -f '${REGISTRY_DIR}/cluster-local.enc.yaml'"
+else
+  info "Applying registry SopsSecrets (SOPS Operator will decrypt them)..."
+  kubectl apply -f "${REGISTRY_DIR}/repo-credentials.enc.yaml"
+  kubectl apply -f "${REGISTRY_DIR}/cluster-local.enc.yaml"
+
+  info "Waiting for ArgoCD repo credential Secret (up to 90 seconds)..."
+  TIMEOUT=90
+  ELAPSED=0
+  while [[ ${ELAPSED} -lt ${TIMEOUT} ]]; do
+    SECRET=$(kubectl get secret argocd-repo-creds -n argocd 2>/dev/null || echo "")
+    [[ -n "${SECRET}" ]] && break
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+  done
+
+  if [[ -z "${SECRET}" ]]; then
+    warn "argocd-repo-creds Secret not created within ${TIMEOUT}s — check SOPS Operator logs:"
+    warn "  kubectl logs -n sops-operator -l app.kubernetes.io/name=sops-secrets-operator --tail=30"
+    error "Cannot continue without ArgoCD repo credentials."
+  fi
+  success "ArgoCD repo credential Secret created"
+fi
+
 # ─── Step 8: Apply root ArgoCD Application ────────────────────────────────────
 step "8/9 Applying root Application (App-of-Apps)"
 
