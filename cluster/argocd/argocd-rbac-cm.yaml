@@ -19,10 +19,6 @@ data:
     p, role:admin, exec,         create, */*, allow
     p, role:admin, projects,     *, *, allow
 
-    # ── Authentik OIDC group binding ─────────────────────────────────────────────
-    # Populated from Authentik group claim; update group name to match your setup
-    # Configured in Step 8 once Authentik is deployed
-    g, argocd-admins, role:admin
-
-  # Request the groups claim from the OIDC provider
-  scopes: '[groups, email]'
+    # ── Authentik group bindings ─────────────────────────────────────────────────
+    g, ArgoCD Admins, role:admin
+    g, ArgoCD Viewers, role:readonly

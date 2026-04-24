@@ -18,7 +18,11 @@ resource "authentik_provider_oauth2" "argocd" {
   allowed_redirect_uris = [
     {
       matching_mode = "strict"
-      url           = "http://argocd.local:32170/auth/callback"
+      url           = "http://argocd.local:32170/api/dex/callback"
+    },
+    {
+      matching_mode = "strict"
+      url           = "http://localhost:8085/auth/callback"
     }
   ]
 
