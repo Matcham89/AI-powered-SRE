@@ -17,7 +17,6 @@ resources:
 
 # Enable Prometheus metrics (scraped by Grafana Alloy)
 prometheus:
-  enabled: true
+  enabled: false
   servicemonitor:
-    enabled: true
-    namespace: cert-manager
+    enabled: false
