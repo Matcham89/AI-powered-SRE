@@ -33,7 +33,7 @@ spec:
       5. Write an RCA report and create a GitHub Issue with this format:
 
       ## RCA: [service] — [event type]
-      **Cluster:** talos-homelab
+      **Cluster:** rancher-desktop (k3s)
       **Namespace:** [namespace]
       **Time:** [event time UTC]
 
