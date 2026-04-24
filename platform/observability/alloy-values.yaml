@@ -51,6 +51,15 @@ alloy:
         scrape_interval = "30s"
       }
 
+      // ---- Metrics: node-exporter (host CPU/memory/disk/network) ----
+      prometheus.scrape "node_exporter" {
+        targets = [{
+          __address__ = "node-exporter-prometheus-node-exporter.observability.svc:9100",
+        }]
+        forward_to      = [prometheus.remote_write.mimir.receiver]
+        scrape_interval = "30s"
+      }
+
       // ---- Metrics: kubelet cAdvisor (container CPU/memory) ----
       discovery.kubernetes "nodes" {
         role = "node"

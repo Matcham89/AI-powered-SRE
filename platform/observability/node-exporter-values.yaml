@@ -1,0 +1,14 @@
+tolerations:
+  - operator: Exists
+
+hostRootFsMount:
+  enabled: true
+  mountPropagation: HostToContainer
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

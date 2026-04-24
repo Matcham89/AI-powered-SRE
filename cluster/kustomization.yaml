@@ -34,6 +34,7 @@ resources:
   - apps/mimir-app.yaml               # Step 10 — Grafana Mimir
   - apps/alloy-app.yaml               # Step 10 — Grafana Alloy
   - apps/kube-state-metrics-app.yaml  # Step 10 — kube-state-metrics
+  - apps/node-exporter-app.yaml      # Step 10 — node-exporter (host metrics)
   - apps/beyla-app.yaml               # Step 10 — Grafana Beyla (eBPF)
   - apps/grafana-app.yaml             # Step 10 — Grafana
   - apps/kagent-crds-app.yaml           # Step 11 — kagent CRDs (must sync before kagent)

@@ -65,6 +65,10 @@ dashboards:
       gnetId: 15759
       revision: 29
       datasource: Mimir
+    node-exporter-full:
+      gnetId: 1860
+      revision: 37
+      datasource: Mimir
 
 datasources:
   datasources.yaml:
