@@ -12,7 +12,6 @@ mimir:
       scheduler_address: ""
     frontend_worker:
       scheduler_address: ""
-      frontend_address: "mimir-query-frontend.observability.svc:9095"
     common:
       storage:
         backend: s3
