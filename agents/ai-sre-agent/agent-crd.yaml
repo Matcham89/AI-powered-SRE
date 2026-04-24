@@ -10,14 +10,7 @@ spec:
   apiKeySecret: kagent-anthropic
   apiKeySecretKey: ANTHROPIC_API_KEY
   anthropic:
-    apiVersion: "2023-06-01"
-  modelInfo:
-    family: claude
-    functionCalling: true
-    jsonOutput: true
-    multipleSystemMessages: true
-    structuredOutput: true
-    vision: false
+    maxTokens: 4096
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -62,16 +55,16 @@ spec:
         mcpServer:
           name: kagent-tool-server
           kind: RemoteMCPServer
-        toolNames:
-          - k8s_get_resources
-          - k8s_get_pod_logs
-          - k8s_describe_resource
-          - k8s_get_events
-          - k8s_get_cluster_configuration
+          toolNames:
+            - k8s_get_resources
+            - k8s_get_pod_logs
+            - k8s_describe_resource
+            - k8s_get_events
+            - k8s_get_cluster_configuration
       - type: McpServer
         mcpServer:
           name: github-mcp-server
           kind: MCPServer
-        toolNames:
-          - create_issue
-          - get_repository
+          toolNames:
+            - create_issue
+            - get_repository
