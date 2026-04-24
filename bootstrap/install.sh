@@ -396,10 +396,24 @@ HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
 
 if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
   e2e_pass "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
-  # Update /etc/hosts for .local domains
-  for hostname in auth.local grafana.local temporal.local sample-api.local; do
-    if ! grep -q "${hostname}" /etc/hosts 2>/dev/null; then
-      echo "127.0.0.1 ${hostname}" | sudo tee -a /etc/hosts >/dev/null
+  # Discover the Mac-accessible node IP (the Lima/Rancher Desktop bridged NIC, not the VM-internal IP)
+  NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+  # On Rancher Desktop / Lima the bridged IP is on a 192.168.64.x subnet; fall back to node IP if not found
+  BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
+  HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
+  info "Using ${HOSTS_IP} for .local /etc/hosts entries"
+  # Update /etc/hosts for all platform .local domains
+  for hostname in auth.local grafana.local temporal.local sample-api.local argocd.local; do
+    if grep -q "${hostname}" /etc/hosts 2>/dev/null; then
+      # Update existing entry if IP differs
+      if ! grep -q "${HOSTS_IP}[[:space:]]*${hostname}" /etc/hosts 2>/dev/null; then
+        sudo sed -i '' "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || \
+          sudo sed -i "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || true
+        info "Updated /etc/hosts: ${HOSTS_IP}  ${hostname}"
+      fi
+    else
+      echo "${HOSTS_IP}  ${hostname}" | sudo tee -a /etc/hosts >/dev/null
+      info "Added /etc/hosts: ${HOSTS_IP}  ${hostname}"
     fi
   done
 else
