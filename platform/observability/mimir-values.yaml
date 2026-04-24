@@ -8,10 +8,6 @@ mimir:
       push_grpc_method_enabled: true
       ring:
         replication_factor: 1
-    frontend:
-      scheduler_address: ""
-    frontend_worker:
-      scheduler_address: ""
     common:
       storage:
         backend: s3
