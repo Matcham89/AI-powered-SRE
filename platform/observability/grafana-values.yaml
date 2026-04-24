@@ -94,6 +94,7 @@ datasources:
         isDefault: true
         jsonData:
           manageAlerts: false
+          prometheusType: Prometheus
 
 alerting:
   rules.yaml:
