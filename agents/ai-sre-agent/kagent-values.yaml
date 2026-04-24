@@ -38,11 +38,11 @@ agents:
   k8s-agent:
     enabled: true
   promql-agent:
-    enabled: true
+    enabled: false
   observability-agent:
-    enabled: true
+    enabled: false
   helm-agent:
-    enabled: true
+    enabled: false
   kgateway-agent:
     enabled: false
   istio-agent:
