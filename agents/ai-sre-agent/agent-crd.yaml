@@ -63,8 +63,8 @@ spec:
             - k8s_get_cluster_configuration
       - type: McpServer
         mcpServer:
-          name: github-mcp-server
-          kind: MCPServer
+          name: github-mcp
+          kind: RemoteMCPServer
           toolNames:
             - create_issue
             - get_repository

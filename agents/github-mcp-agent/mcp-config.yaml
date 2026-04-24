@@ -1,60 +1,20 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: github-mcp-server
-  namespace: kagent
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: github-mcp-server
-  template:
-    metadata:
-      labels:
-        app: github-mcp-server
-    spec:
-      containers:
-        - name: github-mcp-server
-          image: ghcr.io/github/github-mcp-server:latest
-          args:
-            - --transport
-            - http
-            - --port
-            - "3000"
-          ports:
-            - containerPort: 3000
-          env:
-            - name: GITHUB_PERSONAL_ACCESS_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: github-pat
-                  key: token
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              cpu: 200m
-              memory: 256Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: github-mcp-server
-  namespace: kagent
-spec:
-  selector:
-    app: github-mcp-server
-  ports:
-    - port: 3000
-      targetPort: 3000
----
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:
-  name: github-mcp-server
+  name: github-mcp
   namespace: kagent
   labels:
     kagent.dev/discovery: "true"
 spec:
-  url: "http://github-mcp-server.kagent:3000/mcp"
+  description: "GitHub MCP server — tools for repos, issues, and pull requests"
+  headersFrom:
+    - name: Authorization
+      valueFrom:
+        name: kagent-github
+        key: GITHUB_PAT
+        type: Secret
+  protocol: STREAMABLE_HTTP
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+  timeout: 5s
+  url: https://api.githubcopilot.com/mcp/
