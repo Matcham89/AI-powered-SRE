@@ -17,7 +17,12 @@ data:
     - config:
         issuer: http://auth.demo:32170/application/o/argocd/
         clientID: argocd
-        clientSecret: $dex.authentik.clientSecret
+        # Reference the separate argocd-oidc-secret (created by the
+        # argocd-oidc SopsSecret) rather than the default argocd-secret.
+        # Syntax: $<secretName>:<key> — without the colon form, ArgoCD
+        # looks the key up in argocd-secret, which doesn't have it and
+        # dex-server fails to initialise the connector.
+        clientSecret: $argocd-oidc-secret:client-secret
         insecureEnableGroups: true
         scopes:
           - openid

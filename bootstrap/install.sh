@@ -497,6 +497,25 @@ if [[ "${DRY_RUN}" == "false" ]]; then
     warn "Not all apps healthy after ${TIMEOUT}s. Still pending: ${NOT_READY[*]}"
     warn "Run: kubectl get applications -n argocd"
   fi
+
+  # ArgoCD's own components were installed in Step 6 with the default
+  # argocd-cmd-params-cm / argocd-secret shipped by the upstream manifest.
+  # Step 8's root app then overwrites those with:
+  #   argocd-cmd-params-cm .server.insecure=true   (so argocd-server doesn't 302 HTTP→HTTPS)
+  #   argocd-secret .dex.authentik.clientSecret    (so DEX can open the authentik connector)
+  # configMapKeyRef / secretKeyRef envVars are resolved once at pod start,
+  # so the long-running argocd-server / argocd-dex-server pods still hold
+  # the original (empty) values and silently break HTTP login and OIDC
+  # discovery. Bounce them once the root-app sync has settled — this has
+  # to be in the script, there's no way to make the initial install
+  # pick up values that don't exist yet.
+  info "Restarting ArgoCD components so they pick up the root-app config overrides..."
+  for dep in argocd-server argocd-dex-server; do
+    kubectl rollout restart deployment "${dep}" -n argocd &>/dev/null || true
+    kubectl rollout status deployment "${dep}" -n argocd --timeout=120s &>/dev/null || \
+      warn "  ${dep} rollout didn't complete cleanly"
+  done
+  success "ArgoCD components restarted"
 fi
 
 # ─── Step 11: NodePort discovery + /etc/hosts guidance ───────────────────────
