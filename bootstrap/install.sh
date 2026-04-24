@@ -387,7 +387,12 @@ print(t['stringData']['${key}'])
       PF_PID=$!
 
       info "Waiting for Authentik API to respond..."
-      API_TIMEOUT=120
+      # Authentik's pod reaches "Running" quickly but its HTTP endpoint takes
+      # significantly longer on a fresh cluster — initial database migration
+      # plus worker init routinely runs 2-3 minutes. 120s was short enough
+      # that terraform would get skipped, leaving Temporal's oauth2-proxy
+      # stuck in CrashLoopBackOff with no OIDC provider to discover.
+      API_TIMEOUT=360
       API_ELAPSED=0
       API_READY=false
       while [[ ${API_ELAPSED} -lt ${API_TIMEOUT} ]]; do
