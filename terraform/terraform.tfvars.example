@@ -16,11 +16,11 @@ grafana_client_secret  = "PASTE_FROM_OBSERVABILITY_SECRETS"
 
 # Temporal secret: decrypt apps/temporal/oauth2-proxy-secret.enc.yaml
 # sops --decrypt apps/temporal/oauth2-proxy-secret.enc.yaml | grep client-secret
-temporal_client_secret = "f7d483bd9f9319744bddeae00c7d92715ffd84ec8ae064342a9e8304d2e31128"
+temporal_client_secret = "PASTE_FROM_TEMPORAL_OAUTH2_PROXY_SECRET"
 
-# ArgoCD OIDC client secret — choose any strong random value, then patch into argocd-secret:
-#   kubectl patch secret argocd-secret -n argocd \
-#     -p '{"data":{"oidc.authentik.clientSecret":"<base64-of-secret>"}}'
+# ArgoCD OIDC client secret — choose any strong random value, then update
+# cluster/argocd/argocd-oidc-secret.enc.yaml and re-encrypt:
+#   sops cluster/argocd/argocd-oidc-secret.enc.yaml
 argocd_client_secret = "CHOOSE_A_STRONG_SECRET"
 
 # Set a strong password for the demo-user account in Authentik
