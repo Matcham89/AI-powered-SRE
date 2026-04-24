@@ -18,5 +18,5 @@ grafana_client_secret  = "PASTE_FROM_OBSERVABILITY_SECRETS"
 # sops --decrypt apps/temporal/oauth2-proxy-secret.enc.yaml | grep client-secret
 temporal_client_secret = "f7d483bd9f9319744bddeae00c7d92715ffd84ec8ae064342a9e8304d2e31128"
 
-# Set a strong password for the chris user in Authentik
+# Set a strong password for the demo-user account in Authentik
 admin_password = "CHOOSE_A_STRONG_PASSWORD"

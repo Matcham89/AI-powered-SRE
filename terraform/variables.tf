@@ -23,7 +23,7 @@ variable "temporal_client_secret" {
 }
 
 variable "admin_password" {
-  description = "Password for the platform admin user (chris)"
+  description = "Password for the demo-user account in Authentik"
   type        = string
   sensitive   = true
 }

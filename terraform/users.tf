@@ -1,11 +1,11 @@
-resource "authentik_user" "chris" {
-  username = "chris"
-  name     = "Chris Matcham"
-  email    = "chris.matcham@tempo.io"
+resource "authentik_user" "demo_user" {
+  username = "demo-user"
+  name     = "Demo User"
+  email    = "demo@example.com"
   password = var.admin_password
 }
 
 resource "authentik_group" "grafana_admins" {
   name  = "Grafana Admins"
-  users = toset([authentik_user.chris.id])
+  users = toset([authentik_user.demo_user.id])
 }
