@@ -75,17 +75,158 @@ datasources:
     apiVersion: 1
     datasources:
       - name: Loki
+        uid: loki
         type: loki
         url: http://loki.observability.svc:3100
         access: proxy
         isDefault: false
       - name: Tempo
+        uid: tempo
         type: tempo
         url: http://tempo.observability.svc:3200
         access: proxy
         isDefault: false
       - name: Mimir
+        uid: mimir
         type: prometheus
         url: http://mimir-gateway.observability.svc/prometheus
         access: proxy
         isDefault: true
+
+alerting:
+  rules.yaml:
+    apiVersion: 1
+    groups:
+      # Fires whenever khook would fire — same signal (pod restart in sample-api namespace)
+      - orgId: 1
+        name: sre-agent
+        folder: SRE Platform
+        interval: 1m
+        rules:
+          - uid: khook-pod-restart-trigger
+            title: "SRE Agent Triggered — Pod Crash Detected"
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: mimir
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: mimir
+                  editorMode: code
+                  expr: |
+                    sum by (namespace, pod, container) (
+                      increase(kube_pod_container_status_restarts_total{namespace="sample-api"}[5m])
+                    )
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: [0]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        params: []
+                        type: last
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  refId: B
+                  type: threshold
+            noDataState: OK
+            execErrState: Error
+            for: 0s
+            annotations:
+              description: >
+                Pod {{ $labels.pod }} in namespace {{ $labels.namespace }}
+                has restarted. khook has detected this event and triggered
+                the AI SRE agent (kagent) to perform root cause analysis.
+                A GitHub Issue with the RCA report will be opened automatically.
+              summary: "Pod crash detected — AI SRE agent triggered"
+            labels:
+              severity: warning
+              source: khook
+
+      # SLO: sample-api pod availability >= 99 %
+      # SLI: fraction of 1-minute evaluation windows in which at least one
+      #       sample-api pod is in the Ready condition.
+      # Error budget: ~7.2 hours downtime per 30-day window.
+      - orgId: 1
+        name: slo
+        folder: SRE Platform
+        interval: 1m
+        rules:
+          - uid: sample-api-slo-availability
+            title: "SLO Breach — sample-api availability below 99%"
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: mimir
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: mimir
+                  editorMode: code
+                  expr: |
+                    sum(kube_pod_status_ready{namespace="sample-api", condition="true"})
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: [1]
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        params: []
+                        type: last
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  refId: B
+                  type: threshold
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 2m
+            annotations:
+              description: >
+                SLI: kube_pod_status_ready for the sample-api namespace.
+                SLO target: 99% availability (at least one ready pod) over a
+                30-day window (~7.2 hours error budget).
+                The sample-api has had zero ready pods for more than 2 minutes,
+                consuming error budget. khook will trigger the AI SRE agent if
+                a crash loop underlies this outage.
+              summary: "sample-api SLO breach — no ready pods for > 2 min"
+            labels:
+              severity: critical
+              slo: sample-api-availability
+              slo_target: "99"
