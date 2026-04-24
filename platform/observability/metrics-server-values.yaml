@@ -2,13 +2,10 @@
 # pod-overlay-to-node-IP routing issues that cause intermittent kubelet scrape
 # timeouts on single-node k3s clusters (Lima, Rancher Desktop, etc.).
 # Port shifted to 4443 so the pod does not compete with kubelet on 10250.
-hostNetwork: true
+hostNetwork:
+  enabled: true
 
 containerPort: 4443
-
-service:
-  port: 443
-  targetPort: 4443
 
 defaultArgs:
   - --cert-dir=/tmp
