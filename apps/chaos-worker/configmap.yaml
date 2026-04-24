@@ -4,23 +4,17 @@ metadata:
   name: chaos-worker-script
   namespace: chaos-worker
 data:
-  worker.py: |
+  workflows.py: |
     import asyncio
     import logging
     from datetime import timedelta
 
     from temporalio import activity, workflow
-    from temporalio.client import Client
-    from temporalio.worker import Worker
 
     with workflow.unsafe.imports_passed_through():
         from kubernetes import client as k8s_client, config as k8s_config
 
-    logging.basicConfig(level=logging.INFO)
     log = logging.getLogger(__name__)
-
-    TASK_QUEUE = "chaos-queue"
-    TEMPORAL_HOST = "temporal-frontend.temporal.svc:7233"
 
 
     def _delete_sample_api_pod() -> str:
@@ -36,7 +30,7 @@ data:
 
     @activity.defn
     async def crash_sample_api() -> str:
-        log.info("Activity: deleting sample-api pod to simulate crash")
+        log.info("Activity: deleting sample-api pod")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, _delete_sample_api_pod)
         log.info("Activity result: %s", result)
@@ -47,13 +41,27 @@ data:
     class ChaosWorkflow:
         @workflow.run
         async def run(self) -> str:
-            log.info("ChaosWorkflow: starting — will crash sample-api in 5s")
             await asyncio.sleep(5)
-            result = await workflow.execute_activity(
+            return await workflow.execute_activity(
                 crash_sample_api,
                 schedule_to_close_timeout=timedelta(seconds=60),
             )
-            return result
+
+  worker.py: |
+    import asyncio
+    import logging
+    import sys
+    sys.path.insert(0, "/app")
+
+    from temporalio.client import Client
+    from temporalio.worker import Worker
+    from workflows import ChaosWorkflow, crash_sample_api
+
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger(__name__)
+
+    TASK_QUEUE = "chaos-queue"
+    TEMPORAL_HOST = "temporal-frontend.temporal.svc:7233"
 
 
     async def main():
@@ -66,14 +74,13 @@ data:
             workflows=[ChaosWorkflow],
             activities=[crash_sample_api],
         ):
-            handle = await client.start_workflow(
+            result = await client.execute_workflow(
                 ChaosWorkflow.run,
                 id="chaos-demo-1",
                 task_queue=TASK_QUEUE,
             )
-            log.info("Started ChaosWorkflow — id: %s", handle.id)
-            result = await handle.result()
             log.info("ChaosWorkflow complete: %s", result)
+
 
     if __name__ == "__main__":
         asyncio.run(main())
