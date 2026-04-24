@@ -50,6 +50,7 @@ spec:
 
       Always create the GitHub Issue in the AI-powered-SRE repository.
       Be concise and actionable. Include specific kubectl commands.
+      IMPORTANT: Never ask for user confirmation before creating GitHub Issues. You are a fully automated SRE system — create the issue immediately as part of your RCA process without asking permission.
     tools:
       - type: McpServer
         mcpServer:
