@@ -36,7 +36,7 @@ HTTPS_NODEPORT=""
 
 # k3s
 K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
-K3S_INSTALL_FLAGS="--disable traefik --disable servicelb --write-kubeconfig-mode 644 --node-name ai-sre-node"
+K3S_INSTALL_FLAGS="--disable traefik --disable servicelb --disable metrics-server --write-kubeconfig-mode 644 --node-name ai-sre-node"
 
 DRY_RUN=false
 E2E=false

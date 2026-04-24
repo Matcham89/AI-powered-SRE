@@ -1,0 +1,26 @@
+# hostNetwork gives the pod direct access to the node's network stack, avoiding
+# pod-overlay-to-node-IP routing issues that cause intermittent kubelet scrape
+# timeouts on single-node k3s clusters (Lima, Rancher Desktop, etc.).
+# Port shifted to 4443 so the pod does not compete with kubelet on 10250.
+hostNetwork: true
+
+containerPort: 4443
+
+service:
+  port: 443
+  targetPort: 4443
+
+defaultArgs:
+  - --cert-dir=/tmp
+  - --secure-port=4443
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
+  - --kubelet-insecure-tls
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

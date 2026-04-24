@@ -10,6 +10,8 @@ mimir:
         replication_factor: 1
     limits:
       compactor_blocks_retention_period: 2h
+      # 16-shard default overwhelms a single-node homelab ingester; 4 is plenty
+      query_sharding_total_shards: 4
     common:
       storage:
         backend: s3
@@ -104,7 +106,14 @@ ruler:
   enabled: false
 
 query_scheduler:
-  enabled: false
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 5m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
 
 chunks-cache:
   enabled: false
