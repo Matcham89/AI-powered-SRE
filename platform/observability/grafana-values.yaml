@@ -69,6 +69,88 @@ dashboards:
       gnetId: 1860
       revision: 37
       datasource: Mimir
+    slo-overview:
+      json: |
+        {
+          "title": "SLO Overview — sample-api",
+          "uid": "slo-overview",
+          "tags": ["slo", "sample-api", "sre"],
+          "schemaVersion": 36,
+          "version": 1,
+          "refresh": "1m",
+          "time": {"from": "now-1h", "to": "now"},
+          "panels": [
+            {
+              "type": "stat",
+              "title": "Ready Pods",
+              "description": "Number of sample-api pods currently in Ready state. SLO requires ≥ 1.",
+              "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+              "id": 1,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [{"expr": "sum(kube_pod_status_ready{namespace=\"sample-api\", condition=\"true\"})", "refId": "A", "legendFormat": "Ready"}],
+              "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+              "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+            },
+            {
+              "type": "stat",
+              "title": "SLO Target",
+              "description": "Availability SLO target for sample-api.",
+              "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+              "id": 2,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [{"expr": "vector(99)", "refId": "A"}],
+              "options": {"colorMode": "value", "reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+              "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}}
+            },
+            {
+              "type": "stat",
+              "title": "Pod Restarts (last 5m)",
+              "description": "Number of container restarts in sample-api in the last 5 minutes.",
+              "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+              "id": 3,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [{"expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"sample-api\"}[5m]))", "refId": "A"}],
+              "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+              "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
+            },
+            {
+              "type": "stat",
+              "title": "SLI — Current Availability",
+              "description": "1 = at least one pod ready (SLO met). 0 = no pods ready (SLO breaching).",
+              "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+              "id": 4,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [{"expr": "min(kube_pod_status_ready{namespace=\"sample-api\", condition=\"true\"}) or vector(0)", "refId": "A"}],
+              "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+              "fieldConfig": {"defaults": {"unit": "short", "mappings": [{"type": "value", "options": {"0": {"text": "BREACHING", "color": "red"}, "1": {"text": "OK", "color": "green"}}}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+            },
+            {
+              "type": "timeseries",
+              "title": "sample-api — Ready Pods over Time",
+              "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+              "id": 5,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [
+                {"expr": "sum(kube_pod_status_ready{namespace=\"sample-api\", condition=\"true\"})", "legendFormat": "Ready Pods", "refId": "A"},
+                {"expr": "sum(kube_pod_container_status_restarts_total{namespace=\"sample-api\"})", "legendFormat": "Total Restarts (cumulative)", "refId": "B"}
+              ],
+              "fieldConfig": {"defaults": {"unit": "short", "min": 0}},
+              "options": {"tooltip": {"mode": "multi"}}
+            },
+            {
+              "type": "timeseries",
+              "title": "sample-api — Restart Rate",
+              "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+              "id": 6,
+              "datasource": {"type": "prometheus", "uid": "mimir"},
+              "targets": [
+                {"expr": "sum by (pod, container) (increase(kube_pod_container_status_restarts_total{namespace=\"sample-api\"}[5m]))", "legendFormat": "{{pod}} / {{container}}", "refId": "A"}
+              ],
+              "fieldConfig": {"defaults": {"unit": "short", "min": 0}},
+              "options": {"tooltip": {"mode": "multi"}}
+            }
+          ]
+        }
 
 datasources:
   datasources.yaml:
@@ -155,11 +237,7 @@ alerting:
             execErrState: Error
             for: 0s
             annotations:
-              description: >
-                Pod {{ $labels.pod }} in namespace {{ $labels.namespace }}
-                has restarted. khook has detected this event and triggered
-                the AI SRE agent (kagent) to perform root cause analysis.
-                A GitHub Issue with the RCA report will be opened automatically.
+              description: "A pod in the sample-api namespace has restarted. khook has detected this event and triggered the AI SRE agent (kagent) to perform root cause analysis. A GitHub Issue with the RCA report will be opened automatically."
               summary: "Pod crash detected — AI SRE agent triggered"
             labels:
               severity: warning
