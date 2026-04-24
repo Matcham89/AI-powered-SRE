@@ -2,6 +2,8 @@ mimir:
   structuredConfig:
     ingest_storage:
       enabled: false
+      kafka:
+        address: "localhost:9092"
     common:
       storage:
         backend: s3
