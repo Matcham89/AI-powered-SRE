@@ -12,6 +12,23 @@ spec:
     kubernetes:
       envoyService:
         type: NodePort
+        # Pin the HTTP NodePort to 32170. Every internal URL in this platform
+        # (argocd-cm url, DEX issuer, Grafana auth_url, oauth2-proxy OIDC
+        # issuer / redirect URIs) is hardcoded to :32170 because CoreDNS
+        # rewrites auth.demo / argocd.demo to internal ClusterIP Services
+        # that also expose :32170 → 9000/8080. Without pinning, the
+        # auto-assigned NodePort is random, so any OIDC redirect the browser
+        # follows (e.g. temporal.demo → auth.demo:32170/...) hits a port
+        # nothing's listening on. HTTPS stays dynamic — only browser traffic
+        # uses it and the script discovers the real port for /etc/hosts.
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - name: http-80
+                  port: 80
+                  nodePort: 32170
       envoyDeployment:
         replicas: 1
         container:

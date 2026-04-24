@@ -583,7 +583,6 @@ echo -e "${GREEN}${BOLD}  Bootstrap complete!${NC}"
 echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-_PORT="${HTTPS_NODEPORT:-32170}"
 _IP="${HOSTS_IP:-<node-ip>}"
 
 if [[ -n "${DEMO_PASS}" ]]; then
@@ -593,11 +592,16 @@ if [[ -n "${DEMO_PASS}" ]]; then
   echo ""
 fi
 
+# The HTTP port is pinned to 32170 to match the port baked into every
+# internal OIDC URL (argocd-cm url, DEX issuer, Grafana auth_url,
+# oauth2-proxy args). Browsing any service at :32170 keeps the OIDC
+# callback flow on a single consistent port the browser can actually
+# reach.
 echo -e "  ${BOLD}Service URLs:${NC}"
-echo -e "    https://argocd.demo:${_PORT}     — GitOps dashboard"
-echo -e "    https://grafana.demo:${_PORT}    — Observability (Loki/Tempo/Mimir)"
-echo -e "    https://auth.demo:${_PORT}       — Authentik SSO admin"
-echo -e "    https://temporal.demo:${_PORT}   — Workflow UI"
+echo -e "    http://argocd.demo:32170     — GitOps dashboard"
+echo -e "    http://grafana.demo:32170    — Observability (Loki/Tempo/Mimir)"
+echo -e "    http://auth.demo:32170       — Authentik SSO admin"
+echo -e "    http://temporal.demo:32170   — Workflow UI"
 echo ""
 
 echo -e "  ${BOLD}/etc/hosts entries (${_IP}):${NC}"
