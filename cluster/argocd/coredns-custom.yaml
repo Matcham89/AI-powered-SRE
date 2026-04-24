@@ -8,4 +8,3 @@ data:
   platform-hosts.server: |
     rewrite name exact auth.local. authentik-internal.authentik.svc.cluster.local.
     rewrite name regex ^(argocd|grafana|temporal)\.local\.$ platform-gateway.envoy-gateway-system.svc.cluster.local.
-    fallthrough
