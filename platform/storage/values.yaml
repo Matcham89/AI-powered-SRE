@@ -3,21 +3,21 @@ master:
   persistence:
     enabled: true
     storageClass: local-path
-    size: 1Gi
+    size: 512Mi
 
 volume:
   replicas: 1
   persistence:
     enabled: true
     storageClass: local-path
-    size: 10Gi
+    size: 2Gi
 
 filer:
   replicas: 1
   persistence:
     enabled: true
     storageClass: local-path
-    size: 1Gi
+    size: 512Mi
   s3:
     enabled: true
     port: 8333

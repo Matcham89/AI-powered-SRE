@@ -68,3 +68,6 @@ results-cache:
 
 rollout_operator:
   enabled: false
+
+kafka:
+  enabled: false

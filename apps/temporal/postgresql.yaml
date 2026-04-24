@@ -22,4 +22,4 @@ spec:
     name: temporal-db-superuser
   storage:
     storageClass: local-path
-    size: 5Gi
+    size: 1Gi

@@ -69,7 +69,7 @@ postgresql:
     persistence:
       enabled: true
       storageClass: local-path    # K3s/Talos homelab default
-      size: 8Gi
+      size: 2Gi
     resources:
       requests:
         cpu: 50m
