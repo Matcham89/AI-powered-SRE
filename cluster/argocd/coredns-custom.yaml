@@ -9,22 +9,16 @@ data:
   # blocks — bare directives there create empty zone servers, so we only use
   # *.override here.
   #
-  # auth.local → authentik-internal ClusterIP (port 32170→9000) so DEX can
-  # reach Authentik using the same URL the browser uses.
-  # argocd/grafana/temporal.local → platform-gateway ClusterIP (Envoy, port 80).
+  # Rewrites *.local browser-facing hostnames to stable in-cluster FQDNs so
+  # no hardcoded ClusterIPs are needed — safe to rebuild without changes.
+  #
+  # auth.local → authentik-internal (port 32170→9000) so DEX can reach
+  # Authentik using the same URL the browser uses.
+  # argocd.local → argocd-internal (port 32170→8080) so argocd-server can
+  # verify JWTs by fetching its own OIDC discovery doc.
+  # grafana/temporal.local → platform-gateway (Envoy, port 80).
   platform-hosts.override: |
-    template IN A local {
-      match "^auth\.local\.$"
-      answer "{{ .Name }} 60 IN A 10.43.50.96"
-      fallthrough
-    }
-    template IN A local {
-      match "^argocd\.local\.$"
-      answer "{{ .Name }} 60 IN A 10.43.152.225"
-      fallthrough
-    }
-    template IN A local {
-      match "^(grafana|temporal)\.local\.$"
-      answer "{{ .Name }} 60 IN A 10.43.66.2"
-      fallthrough
-    }
+    rewrite name exact auth.local authentik-internal.authentik.svc.cluster.local
+    rewrite name exact argocd.local argocd-internal.argocd.svc.cluster.local
+    rewrite name exact grafana.local platform-gateway.envoy-gateway-system.svc.cluster.local
+    rewrite name exact temporal.local platform-gateway.envoy-gateway-system.svc.cluster.local
