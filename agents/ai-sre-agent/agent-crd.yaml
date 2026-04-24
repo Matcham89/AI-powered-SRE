@@ -67,5 +67,5 @@ spec:
           name: github-mcp
           kind: RemoteMCPServer
           toolNames:
-            - create_issue
-            - get_repository
+            - issue_write
+            - search_repositories
