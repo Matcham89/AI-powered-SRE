@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-internal
+  namespace: authentik
+spec:
+  selector:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: authentik
+  ports:
+    - name: http
+      port: 32170
+      targetPort: 9000
+      protocol: TCP

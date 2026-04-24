@@ -6,5 +6,6 @@ metadata:
 data:
   # k3s CoreDNS imports *.server files — *.override is silently ignored
   platform-hosts.server: |
-    rewrite name regex ^(auth|argocd|grafana|temporal)\.local\.$ platform-gateway.envoy-gateway-system.svc.cluster.local.
+    rewrite name exact auth.local. authentik-internal.authentik.svc.cluster.local.
+    rewrite name regex ^(argocd|grafana|temporal)\.local\.$ platform-gateway.envoy-gateway-system.svc.cluster.local.
     fallthrough
