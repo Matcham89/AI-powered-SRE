@@ -10,9 +10,12 @@
 authentik_url   = "http://localhost:9000"
 authentik_token = "PASTE_BOOTSTRAP_TOKEN_HERE"
 
-# These values are pre-generated and already encrypted in the SOPS secrets.
-# Decrypt to verify: sops --decrypt platform/observability/grafana-oidc-secret.enc.yaml
-grafana_client_secret  = "44419361c8fa5a2c4de25c96227bca5cfc5ac7610094c5f2285d707076c30298"
+# Grafana secret: decrypt observability-secrets.enc.yaml and look for grafana-oidc-secret.client_secret
+# sops --decrypt platform/observability/observability-secrets.enc.yaml | grep -A2 grafana-oidc
+grafana_client_secret  = "PASTE_FROM_OBSERVABILITY_SECRETS"
+
+# Temporal secret: decrypt apps/temporal/oauth2-proxy-secret.enc.yaml
+# sops --decrypt apps/temporal/oauth2-proxy-secret.enc.yaml | grep client-secret
 temporal_client_secret = "f7d483bd9f9319744bddeae00c7d92715ffd84ec8ae064342a9e8304d2e31128"
 
 # Set a strong password for the chris user in Authentik

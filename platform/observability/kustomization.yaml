@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - observability-secrets.enc.yaml
-  - grafana-oidc-secret.enc.yaml
   - httproute-grafana.yaml
