@@ -6,7 +6,8 @@ metadata:
 spec:
   eventConfigurations:
     - eventType: pod-restart
-      agentId: ai-sre-agent
+      agentRef:
+        name: ai-sre-agent
       prompt: |
         INCIDENT: Pod {{.ResourceName}} in namespace {{.Namespace}} restarted at {{.EventTime}}.
         This may be a CrashLoopBackOff. Investigate immediately:
@@ -15,7 +16,8 @@ spec:
         3. Check if there was a recent ArgoCD deployment
         4. Determine root cause and post an RCA GitHub Issue in Matcham89/AI-powered-SRE
     - eventType: oom-kill
-      agentId: ai-sre-agent
+      agentRef:
+        name: ai-sre-agent
       prompt: |
         CRITICAL: Pod {{.ResourceName}} in namespace {{.Namespace}} was OOM killed at {{.EventTime}}.
         Investigate:
@@ -24,7 +26,8 @@ spec:
         3. Check if memory limit is undersized
         4. Post an RCA GitHub Issue in Matcham89/AI-powered-SRE with fix recommendation
     - eventType: probe-failed
-      agentId: ai-sre-agent
+      agentRef:
+        name: ai-sre-agent
       prompt: |
         INCIDENT: Pod {{.ResourceName}} in namespace {{.Namespace}} failed its health probe at {{.EventTime}}.
         Investigate:
