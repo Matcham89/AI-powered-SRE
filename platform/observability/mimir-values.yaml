@@ -60,7 +60,8 @@ ruler:
   enabled: false
 
 query_scheduler:
-  enabled: false
+  enabled: true
+  replicas: 1
 
 chunks-cache:
   enabled: false
