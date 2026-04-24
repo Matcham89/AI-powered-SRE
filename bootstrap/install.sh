@@ -10,7 +10,7 @@
 #   - sudo rights (only if k3s needs installing)
 #
 # /etc/hosts:
-#   The script does NOT modify /etc/hosts. Step 10 discovers the node IP
+#   The script does NOT modify /etc/hosts. Step 11 discovers the node IP
 #   and NodePort, then prints the sudo commands for the user to run.
 #
 # Usage:
@@ -485,10 +485,10 @@ if [[ "${DRY_RUN}" == "true" ]]; then
 else
   HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
     -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
+    -o jsonpath='{.items[0].spec.ports[?(@.port==80)].nodePort}' 2>/dev/null || echo "")
   HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
     -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+    -o jsonpath='{.items[0].spec.ports[?(@.port==443)].nodePort}' 2>/dev/null || echo "")
 
   if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
     success "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
@@ -624,10 +624,10 @@ step "e2e-2 Envoy Gateway NodePort discovery"
 if [[ -z "${HTTP_NODEPORT}" ]] || [[ -z "${HTTPS_NODEPORT}" ]]; then
   HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
     -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
+    -o jsonpath='{.items[0].spec.ports[?(@.port==80)].nodePort}' 2>/dev/null || echo "")
   HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
     -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+    -o jsonpath='{.items[0].spec.ports[?(@.port==443)].nodePort}' 2>/dev/null || echo "")
 fi
 
 if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
