@@ -13,6 +13,7 @@ resources:
 
   # ── ArgoCD self-management ────────────────────────────────────────────────────
   - argocd/argocd-cm.yaml
+  - argocd/argocd-cmd-params-cm.yaml
   - argocd/argocd-rbac-cm.yaml
   - argocd/httproute-argocd.yaml
   - argocd/coredns-custom.yaml
