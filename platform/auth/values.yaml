@@ -3,30 +3,25 @@
 # Docs: https://docs.goauthentik.io/docs/installation/helm
 
 global:
-  # Inject all credentials from the SOPS-decrypted K8s Secret.
-  # Secret created by platform/auth/authentik-secret.enc.yaml (SopsSecret CRD).
-  # Keys: AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL__PASSWORD,
-  #       AUTHENTIK_BOOTSTRAP_PASSWORD, AUTHENTIK_BOOTSTRAP_TOKEN
   envFrom:
     - secretRef:
         name: authentik-secrets
 
 authentik:
-  # secret_key injected via env var AUTHENTIK_SECRET_KEY from envFrom above
   secret_key: ""
 
   error_reporting:
     enabled: false
 
   postgresql:
-    host: "{{ .Release.Name }}-postgresql"
+    host: "authentik-postgres-rw"
     port: 5432
     name: authentik
     user: authentik
     # Password injected via AUTHENTIK_POSTGRESQL__PASSWORD from envFrom above
 
   redis:
-    host: "{{ .Release.Name }}-redis-master"
+    host: "authentik-redis"
     port: 6379
 
 server:
@@ -54,43 +49,10 @@ worker:
       cpu: 500m
       memory: 512Mi
 
-# ── PostgreSQL sub-chart (Bitnami) ───────────────────────────────────────────────
+# Sub-charts disabled — using CNPG cluster (platform/auth/postgresql.yaml)
+# and standalone Redis (platform/auth/redis.yaml) instead
 postgresql:
-  enabled: true
-  auth:
-    username: authentik
-    database: authentik
-    # Password read from existing Secret created by SOPS Secrets Operator
-    existingSecret: authentik-secrets
-    secretKeys:
-      userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
-  primary:
-    persistence:
-      enabled: true
-      storageClass: local-path    # K3s/Talos homelab default
-      size: 2Gi
-    resources:
-      requests:
-        cpu: 50m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+  enabled: false
 
-# ── Redis sub-chart (Bitnami) ───────────────────────────────────────────────────
 redis:
-  enabled: true
-  auth:
-    enabled: false    # No Redis auth for homelab
-  master:
-    persistence:
-      enabled: true
-      storageClass: local-path
-      size: 1Gi
-    resources:
-      requests:
-        cpu: 25m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi
+  enabled: false

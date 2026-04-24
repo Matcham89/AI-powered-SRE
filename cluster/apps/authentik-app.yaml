@@ -19,6 +19,11 @@ spec:
     - repoURL: https://github.com/Matcham89/AI-powered-SRE
       targetRevision: HEAD
       ref: values
+    - repoURL: https://github.com/Matcham89/AI-powered-SRE
+      targetRevision: HEAD
+      path: platform/auth
+      directory:
+        exclude: "*.enc.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

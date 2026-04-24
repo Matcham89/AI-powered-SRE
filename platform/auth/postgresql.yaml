@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: authentik-postgres
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  postgresql:
+    parameters:
+      max_connections: "100"
+  bootstrap:
+    initdb:
+      database: authentik
+      owner: authentik
+      secret:
+        name: authentik-db-app
+  superuserSecret:
+    name: authentik-db-superuser
+  storage:
+    storageClass: local-path
+    size: 2Gi
