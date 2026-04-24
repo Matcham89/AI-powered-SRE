@@ -11,13 +11,11 @@ data:
 
     from temporalio import activity, workflow
 
-    with workflow.unsafe.imports_passed_through():
-        from kubernetes import client as k8s_client, config as k8s_config
-
     log = logging.getLogger(__name__)
 
 
     def _delete_sample_api_pod() -> str:
+        from kubernetes import client as k8s_client, config as k8s_config
         k8s_config.load_incluster_config()
         v1 = k8s_client.CoreV1Api()
         pods = v1.list_namespaced_pod("sample-api", label_selector="app=sample-api")
@@ -51,6 +49,7 @@ data:
     import asyncio
     import logging
     import sys
+    import time
     sys.path.insert(0, "/app")
 
     from temporalio.client import Client
@@ -68,6 +67,7 @@ data:
         client = await Client.connect(TEMPORAL_HOST)
         log.info("Connected to Temporal at %s", TEMPORAL_HOST)
 
+        workflow_id = f"chaos-demo-{int(time.time())}"
         async with Worker(
             client,
             task_queue=TASK_QUEUE,
@@ -76,7 +76,7 @@ data:
         ):
             result = await client.execute_workflow(
                 ChaosWorkflow.run,
-                id="chaos-demo-1",
+                id=workflow_id,
                 task_queue=TASK_QUEUE,
             )
             log.info("ChaosWorkflow complete: %s", result)
