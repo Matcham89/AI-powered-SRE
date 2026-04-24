@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and fill in values.
+#
+# Port-forward before running terraform:
+#   kubectl port-forward -n authentik svc/authentik-server 9000:80
+#
+# Bootstrap token:
+#   SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt \
+#   sops --decrypt platform/auth/authentik-secret.enc.yaml | grep BOOTSTRAP_TOKEN
+
+authentik_url   = "http://localhost:9000"
+authentik_token = "PASTE_BOOTSTRAP_TOKEN_HERE"
+
+# These values are pre-generated and already encrypted in the SOPS secrets.
+# Decrypt to verify: sops --decrypt platform/observability/grafana-oidc-secret.enc.yaml
+grafana_client_secret  = "44419361c8fa5a2c4de25c96227bca5cfc5ac7610094c5f2285d707076c30298"
+temporal_client_secret = "f7d483bd9f9319744bddeae00c7d92715ffd84ec8ae064342a9e8304d2e31128"
+
+# Set a strong password for the chris user in Authentik
+admin_password = "CHOOSE_A_STRONG_PASSWORD"

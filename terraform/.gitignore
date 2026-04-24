@@ -1,0 +1,17 @@
+# Local state — never commit
+terraform.tfstate
+terraform.tfstate.backup
+
+# Provider cache and lock
+.terraform/
+.terraform.lock.hcl
+
+# Secret vars — never commit
+terraform.tfvars
+*.auto.tfvars
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
