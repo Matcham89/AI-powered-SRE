@@ -1,0 +1,68 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-api
+  namespace: sample-api
+  labels:
+    app: sample-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-api
+  template:
+    metadata:
+      labels:
+        app: sample-api
+    spec:
+      containers:
+        - name: sample-api
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      volumes:
+        - name: config
+          configMap:
+            name: sample-api-nginx
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-api-nginx
+  namespace: sample-api
+data:
+  default.conf: |
+    server {
+        listen 80;
+
+        location / {
+            return 200 '{"service":"sample-api","status":"ok","version":"1.0.0"}';
+            add_header Content-Type application/json;
+        }
+
+        location /health {
+            return 200 '{"status":"healthy"}';
+            add_header Content-Type application/json;
+        }
+
+        location /error {
+            return 500 '{"error":"simulated error"}';
+            add_header Content-Type application/json;
+        }
+    }

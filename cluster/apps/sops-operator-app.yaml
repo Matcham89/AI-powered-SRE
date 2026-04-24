@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sops-secrets-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://isindir.github.io/sops-secrets-operator/
+      chart: sops-secrets-operator
+      targetRevision: "0.26.0"
+      helm:
+        valueFiles:
+          - $values/bootstrap/manifests/sops-operator-values.yaml
+    - repoURL: https://github.com/Matcham89/AI-powered-SRE
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sops-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

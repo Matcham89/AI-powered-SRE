@@ -1,0 +1,22 @@
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+  labels:
+    kagent.dev/discovery: "true"
+spec:
+  deployment:
+    image: "node:22-slim"
+    port: 3000
+    cmd: npx
+    args:
+      - -y
+      - "@github/mcp-server"
+    env:
+      - name: GITHUB_PERSONAL_ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-pat
+            key: token
+  transportType: stdio

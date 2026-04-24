@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kagent
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  sources:
+    - repoURL: oci://ghcr.io/kagent-dev/kagent/helm
+      chart: kagent
+      targetRevision: "0.8.6"
+      helm:
+        valueFiles:
+          - $values/agents/ai-sre-agent/kagent-values.yaml
+    - repoURL: https://github.com/Matcham89/AI-powered-SRE
+      targetRevision: HEAD
+      ref: values
+    - repoURL: https://github.com/Matcham89/AI-powered-SRE
+      targetRevision: HEAD
+      path: agents/ai-sre-agent
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kagent
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

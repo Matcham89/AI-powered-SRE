@@ -1,0 +1,84 @@
+alloy:
+  configMap:
+    create: true
+    content: |
+      // Kubernetes pod log discovery
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          action        = "replace"
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          action        = "replace"
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_container_name"]
+          action        = "replace"
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          action        = "replace"
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.observability.svc:3100/loki/api/v1/push"
+        }
+      }
+
+      // Kubernetes node metrics via kubelet
+      prometheus.scrape "kubelet" {
+        targets = discovery.kubernetes.pods.targets
+        forward_to = [prometheus.remote_write.mimir.receiver]
+        scrape_interval = "30s"
+      }
+
+      prometheus.remote_write "mimir" {
+        endpoint {
+          url = "http://mimir-nginx.observability.svc/api/v1/push"
+        }
+      }
+
+      // OTLP receiver for traces from Beyla and other sources
+      otelcol.receiver.otlp "default" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+        output {
+          traces = [otelcol.exporter.otlphttp.tempo.input]
+        }
+      }
+
+      otelcol.exporter.otlphttp "tempo" {
+        client {
+          endpoint = "http://tempo.observability.svc:4318"
+        }
+      }
+
+controller:
+  type: daemonset
+
+service:
+  enabled: true
+
+serviceMonitor:
+  enabled: false

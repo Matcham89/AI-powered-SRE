@@ -1,0 +1,44 @@
+deploymentMode: SingleBinary
+
+loki:
+  commonConfig:
+    replication_factor: 1
+  auth_enabled: false
+  storage:
+    type: s3
+    bucketNames:
+      chunks: loki
+      ruler: loki
+      admin: loki
+    s3:
+      endpoint: http://seaweedfs-filer.seaweedfs.svc:8333
+      region: us-east-1
+      accessKeyId: eb564277862c4709b2e1982ffac875e5
+      secretAccessKey: 07a8e88458f45e85d477011ad257f41e83ca95d1
+      s3ForcePathStyle: true
+      insecure: true
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 10Gi
+
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+gateway:
+  enabled: false
+
+minio:
+  enabled: false
+
+test:
+  enabled: false
+lokiCanary:
+  enabled: false

@@ -1,0 +1,35 @@
+{
+  "eval_id": 2,
+  "eval_name": "okta-oidc-rbac-setup",
+  "prompt": "I need to set up OIDC SSO for our ArgoCD instance using Okta. Our platform team should be admins, our dev teams should only be able to sync apps in their own project (not delete or create anything), and everyone else who logs in should be read-only. We have Okta groups: okta-platform-admins, okta-dev-team-frontend, okta-dev-team-backend.",
+  "assertions": [
+    {
+      "name": "uses-oidc-config-not-dex",
+      "description": "Uses oidc.config in argocd-cm (not dex.config) — Okta supports direct OIDC without Dex"
+    },
+    {
+      "name": "secret-reference-not-plaintext",
+      "description": "ClientSecret referenced via $oidc.okta.clientSecret or similar secret reference (not hardcoded plaintext)"
+    },
+    {
+      "name": "policy-default-readonly",
+      "description": "argocd-rbac-cm sets policy.default: role:readonly"
+    },
+    {
+      "name": "all-three-groups-mapped",
+      "description": "All three Okta groups (okta-platform-admins, okta-dev-team-frontend, okta-dev-team-backend) are bound to roles"
+    },
+    {
+      "name": "developer-role-sync-get-only",
+      "description": "Developer role is limited to sync and get actions — no create, update, or delete"
+    },
+    {
+      "name": "groups-scope-requested",
+      "description": "requestedScopes includes 'groups' so ArgoCD receives group membership claims from Okta"
+    },
+    {
+      "name": "disable-admin-after-sso",
+      "description": "Mentions disabling the admin user (admin.enabled: false) after SSO is confirmed working"
+    }
+  ]
+}

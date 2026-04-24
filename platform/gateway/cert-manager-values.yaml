@@ -1,0 +1,23 @@
+# cert-manager Helm values
+# Chart: jetstack/cert-manager v1.20.2
+
+# Install CRDs via Helm (avoids separate CRD install step)
+crds:
+  enabled: true
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable Prometheus metrics (scraped by Grafana Alloy)
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    namespace: cert-manager

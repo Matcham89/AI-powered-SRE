@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Resources are added here as each platform step completes.
+# This staged approach keeps ArgoCD's dashboard clean — no apps
+# appear until their backing manifests are ready.
+
+resources:
+  # ── Encrypted credentials (SopsSecret CRDs) ───────────────────────────────────
+  # Decrypted by SOPS Secrets Operator → native K8s Secrets consumed by ArgoCD
+  - registry/repo-credentials.enc.yaml
+  - registry/cluster-local.enc.yaml
+
+  # ── ArgoCD self-management ────────────────────────────────────────────────────
+  - argocd/argocd-cm.yaml
+  - argocd/argocd-rbac-cm.yaml
+
+  # ── Platform component Applications ───────────────────────────────────────────
+  # Uncommented as each step is implemented and tested:
+  - apps/sops-operator-app.yaml        # Step 6  — SOPS Secrets Operator
+  - apps/gateway-app.yaml              # Step 7  — Envoy Gateway (controller)
+  - apps/gateway-resources-app.yaml   # Step 7  — Gateway instance + EnvoyProxy
+  - apps/cert-manager-app.yaml        # Step 7  — cert-manager (TLS)
+  - apps/security-app.yaml            # Step 7  — NetworkPolicies
+
+  - apps/authentik-app.yaml            # Step 8  — Authentik (OIDC/SSO)
+  - apps/authentik-routes-app.yaml    # Step 8  — Authentik HTTPRoutes
+  - apps/seaweedfs-app.yaml            # Step 9  — SeaweedFS (Object Storage)
+  - apps/loki-app.yaml                 # Step 10 — Grafana Loki
+  - apps/tempo-app.yaml               # Step 10 — Grafana Tempo
+  - apps/mimir-app.yaml               # Step 10 — Grafana Mimir
+  - apps/alloy-app.yaml               # Step 10 — Grafana Alloy
+  - apps/beyla-app.yaml               # Step 10 — Grafana Beyla (eBPF)
+  - apps/grafana-app.yaml             # Step 10 — Grafana
+  - apps/kagent-app.yaml               # Step 11 — kagent (AI SRE)
+  - apps/khook-app.yaml               # Step 11 — khook (K8s event watcher)
+  - apps/github-mcp-app.yaml          # Step 11 — GitHub MCP agent
+  - apps/cnpg-app.yaml                 # Step 12 — CloudNative-PG operator (prereq)
+  - apps/temporal-app.yaml             # Step 12 — Temporal workflow engine
+  - apps/sample-api-app.yaml          # Step 12 — Sample Go API

@@ -1,0 +1,22 @@
+# DNS egress — every namespace needs this or pod DNS resolution breaks.
+# Applied to all namespaces that have a default-deny policy.
+# kube-dns lives in kube-system on port 53 (UDP + TCP).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: kagent
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system

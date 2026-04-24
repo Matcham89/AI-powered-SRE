@@ -1,0 +1,27 @@
+tempo:
+  multitenancyEnabled: false
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: tempo
+        endpoint: seaweedfs-filer.seaweedfs.svc:8333
+        access_key: eb564277862c4709b2e1982ffac875e5
+        secret_key: 07a8e88458f45e85d477011ad257f41e83ca95d1
+        insecure: true
+      wal:
+        path: /var/tempo/wal
+  server:
+    http_listen_port: 3200
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 10Gi

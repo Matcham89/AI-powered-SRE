@@ -1,0 +1,39 @@
+{
+  "eval_id": 1,
+  "eval_name": "eks-ha-production-install",
+  "prompt": "I've just provisioned a fresh EKS cluster on AWS and I want to install ArgoCD on it in HA mode so my platform team can use it to manage all our production workloads. We use GitHub for our git repos and we'll have around 50 apps to start with. What do I need to do to get a production-grade ArgoCD setup running?",
+  "assertions": [
+    {
+      "name": "uses-ha-manifest",
+      "description": "Uses the HA install manifest path (ha/install.yaml), not the standard install.yaml"
+    },
+    {
+      "name": "correct-version",
+      "description": "References ArgoCD v3.3.8 specifically in the install command or manifest URL"
+    },
+    {
+      "name": "rbac-default-readonly",
+      "description": "argocd-rbac-cm sets policy.default to role:readonly"
+    },
+    {
+      "name": "eks-irsa-cluster-secret",
+      "description": "EKS cluster secret uses awsAuthConfig with clusterName and roleARN (IRSA pattern)"
+    },
+    {
+      "name": "repo-secret-label",
+      "description": "Repository secret includes the label argocd.argoproj.io/secret-type: repository"
+    },
+    {
+      "name": "delete-initial-admin-secret",
+      "description": "Explicitly mentions deleting or rotating argocd-initial-admin-secret as a security step"
+    },
+    {
+      "name": "named-appproject",
+      "description": "Creates a named AppProject rather than relying on the default project"
+    },
+    {
+      "name": "app-of-apps-pattern",
+      "description": "Includes or recommends an App-of-Apps root Application for GitOps bootstrap"
+    }
+  ]
+}

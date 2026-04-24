@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # OCI Helm chart — official Envoy Gateway release
+    - repoURL: oci://docker.io/envoyproxy/gateway-helm
+      chart: gateway-helm
+      targetRevision: "v1.3.2"
+      helm:
+        valueFiles:
+          - $values/platform/gateway/values.yaml
+    - repoURL: https://github.com/Matcham89/AI-powered-SRE
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

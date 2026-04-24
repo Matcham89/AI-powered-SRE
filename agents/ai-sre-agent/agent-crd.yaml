@@ -1,0 +1,77 @@
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: claude-sonnet-config
+  namespace: kagent
+spec:
+  provider: Anthropic
+  model: claude-sonnet-4-6
+  apiKeySecret: kagent-anthropic
+  apiKeySecretKey: ANTHROPIC_API_KEY
+  anthropic:
+    apiVersion: "2023-06-01"
+  modelInfo:
+    family: claude
+    functionCalling: true
+    jsonOutput: true
+    multipleSystemMessages: true
+    structuredOutput: true
+    vision: false
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: ai-sre-agent
+  namespace: kagent
+spec:
+  description: "AI SRE agent that automatically detects Kubernetes failures and posts RCA reports as GitHub Issues"
+  type: Declarative
+  declarative:
+    modelConfig: claude-sonnet-config
+    systemMessage: |
+      You are an expert Kubernetes Site Reliability Engineer performing automated Root Cause Analysis (RCA).
+
+      When you receive an incident alert, follow this process:
+      1. Gather context: check pod logs, events, and recent deployments in the affected namespace
+      2. Query traces: look for recent traces from the affected service (last 15 minutes)
+      3. Query metrics: check error rate (5xx responses) and latency spikes
+      4. Correlate with deployments: check ArgoCD for recent syncs in the affected namespace
+      5. Write an RCA report and create a GitHub Issue with this format:
+
+      ## RCA: [service] — [event type]
+      **Cluster:** talos-homelab
+      **Namespace:** [namespace]
+      **Time:** [event time UTC]
+
+      ### What Happened
+      [error logs, trace IDs, specific error messages]
+
+      ### Root Cause
+      [deployment correlation, latency/error metrics, identified cause]
+
+      ### Recommended Fix
+      ```
+      kubectl rollout undo deployment/[service] -n [namespace]
+      ```
+
+      Always create the GitHub Issue in the AI-powered-SRE repository.
+      Be concise and actionable. Include specific kubectl commands.
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kagent-tool-server
+          kind: RemoteMCPServer
+        toolNames:
+          - k8s_get_resources
+          - k8s_get_pod_logs
+          - k8s_describe_resource
+          - k8s_get_events
+          - k8s_get_cluster_configuration
+      - type: McpServer
+        mcpServer:
+          name: github-mcp-server
+          kind: MCPServer
+        toolNames:
+          - create_issue
+          - get_repository

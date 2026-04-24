@@ -1,0 +1,67 @@
+# kagent namespace — explicit allow rules on top of default-deny.
+#
+# kagent needs to:
+#   - Receive webhooks from khook (within same namespace)
+#   - Query Tempo traces and Mimir metrics (observability namespace)
+#   - Call Kubernetes API for kubectl operations
+#   - Call GitHub API to post RCA issues (port 443, github.com)
+#
+# For stricter FQDN-based GitHub egress, replace the generic port-443 egress with:
+#   apiVersion: cilium.io/v2
+#   kind: CiliumNetworkPolicy
+#   spec:
+#     egress:
+#       - toFQDNs:
+#           - matchName: api.github.com
+#         toPorts:
+#           - ports:
+#               - port: "443"
+#                 protocol: TCP
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kagent-allow
+  namespace: kagent
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow intra-namespace traffic (khook → kagent webhook, MCP sidecar comms)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kagent
+    # Allow Alertmanager webhook (from observability namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - port: 8080
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+    # Kubernetes API server for kubectl operations
+    - ports:
+        - port: 6443
+        - port: 443
+    # Observability stack (Tempo, Mimir endpoints)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - port: 3100   # Loki
+        - port: 3200   # Tempo
+        - port: 9009   # Mimir
+        - port: 8080   # Alloy

@@ -1,0 +1,121 @@
+{
+  "skill_name": "argocd",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I've just provisioned a fresh EKS cluster on AWS and I want to install ArgoCD on it in HA mode so my platform team can use it to manage all our production workloads. We use GitHub for our git repos and we'll have around 50 apps to start with. What do I need to do to get a production-grade ArgoCD setup running?",
+      "expected_output": "Step-by-step HA ArgoCD installation for EKS: kubectl apply of ha/install.yaml pointing to v3.3.8, initial admin password retrieval, argocd-cm with url and resource.exclusions, argocd-rbac-cm with policy.default: role:readonly, GitHub repo secret using SSH or GitHub App auth, an EKS cluster secret using IRSA config, an AppProject for platform workloads, and a root App-of-Apps Application. Should include security hardening notes (delete initial secret, TLS config, disable admin after SSO). Should mention ARGOCD_CONTROLLER_REPLICAS for app controller sharding.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-ha-manifest",
+          "description": "Uses the HA install manifest path (ha/install.yaml), not the standard install.yaml"
+        },
+        {
+          "name": "correct-version",
+          "description": "References ArgoCD v3.3.8 specifically in the install command or manifest URL"
+        },
+        {
+          "name": "rbac-default-readonly",
+          "description": "argocd-rbac-cm sets policy.default to role:readonly"
+        },
+        {
+          "name": "eks-irsa-cluster-secret",
+          "description": "EKS cluster secret uses awsAuthConfig with clusterName and roleARN (IRSA pattern)"
+        },
+        {
+          "name": "repo-secret-label",
+          "description": "Repository secret includes the label argocd.argoproj.io/secret-type: repository"
+        },
+        {
+          "name": "delete-initial-admin-secret",
+          "description": "Explicitly mentions deleting or rotating argocd-initial-admin-secret as a security step"
+        },
+        {
+          "name": "named-appproject",
+          "description": "Creates a named AppProject rather than relying on the default project"
+        },
+        {
+          "name": "app-of-apps-pattern",
+          "description": "Includes or recommends an App-of-Apps root Application for GitOps bootstrap"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to set up OIDC SSO for our ArgoCD instance using Okta. Our platform team should be admins, our dev teams should only be able to sync apps in their own project (not delete or create anything), and everyone else who logs in should be read-only. We have Okta groups: okta-platform-admins, okta-dev-team-frontend, okta-dev-team-backend.",
+      "expected_output": "Complete argocd-cm with oidc.config block for Okta (issuer URL, clientID/Secret references, requestedScopes including groups, requestedIDTokenClaims for groups). Complete argocd-rbac-cm with: policy.default: role:readonly, platform-admin role with full access, developer role limited to sync/get in their project, group bindings mapping okta groups to roles. Should reference storing clientSecret in argocd-secret rather than plaintext. Should note to disable admin user after SSO is confirmed working.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-oidc-config-not-dex",
+          "description": "Uses oidc.config in argocd-cm (not dex.config) — Okta supports direct OIDC without Dex"
+        },
+        {
+          "name": "secret-reference-not-plaintext",
+          "description": "ClientSecret referenced via $oidc.okta.clientSecret or similar secret reference (not hardcoded plaintext)"
+        },
+        {
+          "name": "policy-default-readonly",
+          "description": "argocd-rbac-cm sets policy.default: role:readonly"
+        },
+        {
+          "name": "all-three-groups-mapped",
+          "description": "All three Okta groups (okta-platform-admins, okta-dev-team-frontend, okta-dev-team-backend) are bound to roles"
+        },
+        {
+          "name": "developer-role-sync-get-only",
+          "description": "Developer role is limited to sync and get actions — no create, update, or delete"
+        },
+        {
+          "name": "groups-scope-requested",
+          "description": "requestedScopes includes 'groups' so ArgoCD receives group membership claims from Okta"
+        },
+        {
+          "name": "disable-admin-after-sso",
+          "description": "Mentions disabling the admin user (admin.enabled: false) after SSO is confirmed working"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to create an AppProject called 'payments' for our payments team. They should only be able to deploy to the payments-prod and payments-staging namespaces on our main cluster. Their git repos all live under https://github.com/acme-corp/payments-*. They need to be able to create Deployments, Services, ConfigMaps, HorizontalPodAutoscalers, and Namespaces but nothing else. The payments team lead should have admin on this project, and developers should only be able to sync.",
+      "expected_output": "Complete AppProject YAML named 'payments' with: sourceRepos restricted to https://github.com/acme-corp/payments-* (wildcard), destinations limited to payments-prod and payments-staging namespaces on kubernetes.default.svc, clusterResourceWhitelist with only Namespace kind, namespaceResourceWhitelist allowing only Deployment/Service/ConfigMap/HPA, project roles with payments-admin (full) and payments-developer (sync/get only), finalizer on the AppProject. Should use resourceWhitelist pattern correctly.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "sourcerepos-wildcard",
+          "description": "sourceRepos uses the wildcard https://github.com/acme-corp/payments-* (not a specific repo or '*')"
+        },
+        {
+          "name": "destinations-both-namespaces",
+          "description": "Destinations include both payments-prod AND payments-staging namespaces"
+        },
+        {
+          "name": "cluster-resource-namespace-only",
+          "description": "clusterResourceWhitelist allows only Namespace kind (not ClusterRole, ClusterRoleBinding, or '*')"
+        },
+        {
+          "name": "namespace-resource-four-kinds",
+          "description": "Namespace-scoped resource allowlist covers all four: Deployment, Service, ConfigMap, HorizontalPodAutoscaler"
+        },
+        {
+          "name": "two-project-roles",
+          "description": "Defines two project roles: one admin/lead role and one developer role"
+        },
+        {
+          "name": "developer-role-sync-only",
+          "description": "Developer role policies are limited to sync and/or get — no create or delete"
+        },
+        {
+          "name": "finalizer-present",
+          "description": "AppProject has the finalizer resources-finalizer.argocd.argoproj.io to prevent accidental deletion"
+        },
+        {
+          "name": "destination-in-cluster",
+          "description": "Destination server is https://kubernetes.default.svc (in-cluster reference)"
+        }
+      ]
+    }
+  ]
+}

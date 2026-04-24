@@ -1,0 +1,35 @@
+master:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+
+volume:
+  replicas: 3
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 10Gi
+
+filer:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+  s3:
+    enabled: true
+    port: 8333
+    httpsPort: 0
+    enableAuth: true
+    existingConfigSecret: seaweedfs-s3-config
+    createBuckets:
+      - name: loki
+        anonymousRead: false
+      - name: tempo
+        anonymousRead: false
+      - name: mimir
+        anonymousRead: false
+      - name: temporal
+        anonymousRead: false

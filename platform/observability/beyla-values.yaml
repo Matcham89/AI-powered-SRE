@@ -1,0 +1,13 @@
+preset: application
+
+env:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy.observability.svc:4317
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  BEYLA_KUBE_METADATA_ENABLE: "autodetect"
+  BEYLA_TRACE_PRINTER: "text"
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true

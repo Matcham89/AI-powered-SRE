@@ -1,0 +1,44 @@
+# ArgoCD namespace policy.
+# ArgoCD needs broad egress because it:
+#   - Syncs from GitHub (443)
+#   - Applies resources to all managed namespaces via the K8s API (443/6443)
+#   - Internal component communication (repo-server, app-controller, redis, dex)
+#
+# NOTE: This is a permissive policy. Tighten egress further using
+# CiliumNetworkPolicy with FQDN-based rules (e.g., toFQDNs: github.com)
+# once baseline sync is confirmed working.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-allow
+  namespace: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow UI/API access from any source (gateway will front this with OIDC)
+    - ports:
+        - port: 8080
+        - port: 8443
+    # Allow internal ArgoCD component communication
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+    # GitHub and Kubernetes API server
+    - ports:
+        - port: 443
+        - port: 6443

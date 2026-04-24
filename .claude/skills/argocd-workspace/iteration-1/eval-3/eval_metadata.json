@@ -1,0 +1,39 @@
+{
+  "eval_id": 3,
+  "eval_name": "appproject-payments-team",
+  "prompt": "I want to create an AppProject called 'payments' for our payments team. They should only be able to deploy to the payments-prod and payments-staging namespaces on our main cluster. Their git repos all live under https://github.com/acme-corp/payments-*. They need to be able to create Deployments, Services, ConfigMaps, HorizontalPodAutoscalers, and Namespaces but nothing else. The payments team lead should have admin on this project, and developers should only be able to sync.",
+  "assertions": [
+    {
+      "name": "sourcerepos-wildcard",
+      "description": "sourceRepos uses the wildcard https://github.com/acme-corp/payments-* (not a specific repo or '*')"
+    },
+    {
+      "name": "destinations-both-namespaces",
+      "description": "Destinations include both payments-prod AND payments-staging namespaces"
+    },
+    {
+      "name": "cluster-resource-namespace-only",
+      "description": "clusterResourceWhitelist allows only Namespace kind (not ClusterRole, ClusterRoleBinding, or '*')"
+    },
+    {
+      "name": "namespace-resource-four-kinds",
+      "description": "Namespace-scoped resource allowlist covers all four: Deployment, Service, ConfigMap, HorizontalPodAutoscaler"
+    },
+    {
+      "name": "two-project-roles",
+      "description": "Defines two project roles: one admin/lead role and one developer role"
+    },
+    {
+      "name": "developer-role-sync-only",
+      "description": "Developer role policies are limited to sync and/or get — no create or delete"
+    },
+    {
+      "name": "finalizer-present",
+      "description": "AppProject has the finalizer resources-finalizer.argocd.argoproj.io to prevent accidental deletion"
+    },
+    {
+      "name": "destination-in-cluster",
+      "description": "Destination server is https://kubernetes.default.svc (in-cluster reference)"
+    }
+  ]
+}

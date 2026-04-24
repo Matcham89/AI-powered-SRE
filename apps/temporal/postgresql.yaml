@@ -1,0 +1,25 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: temporal-postgres
+  namespace: temporal
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  instances: 1
+  postgresql:
+    parameters:
+      max_connections: "200"
+  bootstrap:
+    initdb:
+      database: temporal
+      owner: temporal
+      secret:
+        name: temporal-db-app
+      postInitSQL:
+        - CREATE DATABASE temporal_visibility OWNER temporal;
+  superuserSecret:
+    name: temporal-db-superuser
+  storage:
+    storageClass: local-path
+    size: 5Gi

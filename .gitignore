@@ -1,0 +1,35 @@
+# Age private key — NEVER commit this
+keys.txt
+*.age.key
+age-key.txt
+
+# SOPS environment variable exports
+.sops-env
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Kubeconfig — use KUBECONFIG env var instead
+kubeconfig
+kubeconfig.yaml
+*.kubeconfig
+
+# Helm chart cache
+.helm/
+charts/
+
+# Terraform state (if used later)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

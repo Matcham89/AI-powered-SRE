@@ -1,0 +1,20 @@
+# Default-deny NetworkPolicies for platform namespaces.
+# Applied to the highest-risk namespaces first (AI agents).
+# Infrastructure namespaces (argocd, observability) are tightened iteratively
+# once baseline functionality is confirmed.
+#
+# Uses standard Kubernetes NetworkPolicy (compatible with Cilium and any CNI).
+# CiliumNetworkPolicy equivalents are commented below each resource for
+# clusters running Cilium where FQDN-based egress filtering is needed.
+
+# ── kagent namespace — tightest policy (AI agent with cluster + GitHub access) ──
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: kagent
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

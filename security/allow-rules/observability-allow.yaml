@@ -1,0 +1,67 @@
+# Observability namespace policy.
+# Components: Grafana Alloy, Beyla, Loki, Tempo, Mimir, Grafana.
+#
+# Beyla runs as a DaemonSet with eBPF and needs host network access —
+# it does NOT need NetworkPolicy allows for its eBPF probes (kernel-level).
+# Its metric/trace exports use standard pod networking.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: observability-allow
+  namespace: observability
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Intra-namespace (Alloy → Loki/Tempo/Mimir, Grafana → datasources)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+    # kagent queries Tempo and Mimir
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kagent
+      ports:
+        - port: 3200   # Tempo gRPC/HTTP
+        - port: 9009   # Mimir
+        - port: 3100   # Loki
+    # Grafana UI via Envoy Gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - port: 3000   # Grafana
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+    # Intra-namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+    # SeaweedFS S3 (log/trace/metric storage)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: seaweedfs
+      ports:
+        - port: 8333   # SeaweedFS S3 API
+    # Alloy scrapes all namespaces for metrics
+    - ports:
+        - port: 443
+        - port: 9090
+        - port: 8080
+        - port: 9100

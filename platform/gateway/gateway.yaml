@@ -1,0 +1,60 @@
+# EnvoyProxy — configures the dataplane service type.
+# NodePort works on any homelab cluster without MetalLB.
+# Switch type to LoadBalancer when MetalLB or a cloud LB is available.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: platform-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+      envoyDeployment:
+        replicas: 1
+        container:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+# Gateway — the actual ingress entry point for the platform.
+# Listens on HTTP (80) and HTTPS (443). All platform HTTPRoutes reference this Gateway.
+#
+# TLS: cert-manager handles certificate issuance (see cluster/apps/cert-manager-app.yaml).
+# On first deploy, comment out the HTTPS listener and the tls block until
+# cert-manager + ClusterIssuer are ready, then re-enable.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: platform-gateway
+  namespace: envoy-gateway-system
+  annotations:
+    # Reference to EnvoyProxy CRD above
+    gateway.envoyproxy.io/envoy-proxy: platform-proxy
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      port: 443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: platform-tls
+            namespace: envoy-gateway-system

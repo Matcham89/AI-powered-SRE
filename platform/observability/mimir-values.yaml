@@ -1,0 +1,70 @@
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: seaweedfs-filer.seaweedfs.svc:8333
+          bucket_name: mimir
+          access_key_id: eb564277862c4709b2e1982ffac875e5
+          secret_access_key: 07a8e88458f45e85d477011ad257f41e83ca95d1
+          insecure: true
+    blocks_storage:
+      s3:
+        bucket_name: mimir
+    alertmanager_storage:
+      s3:
+        bucket_name: mimir
+    ruler_storage:
+      s3:
+        bucket_name: mimir
+
+minio:
+  enabled: false
+
+distributor:
+  replicas: 1
+
+ingester:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+
+store_gateway:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+
+compactor:
+  replicas: 1
+
+querier:
+  replicas: 1
+
+query_frontend:
+  replicas: 1
+
+alertmanager:
+  enabled: false
+  replicas: 1
+
+ruler:
+  enabled: false
+
+query_scheduler:
+  enabled: false
+
+chunks-cache:
+  enabled: false
+
+index-cache:
+  enabled: false
+
+metadata-cache:
+  enabled: false
+
+results-cache:
+  enabled: false
+
+rollout_operator:
+  enabled: false

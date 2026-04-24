@@ -1,0 +1,39 @@
+server:
+  replicaCount: 1
+
+  config:
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: 128
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12_pgx
+            databaseName: temporal
+            connectAddr: "temporal-postgres-rw.temporal.svc:5432"
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: temporal-db-secret
+            secretKey: password
+            maxConns: 10
+            maxIdleConns: 10
+            maxConnLifetime: "1h"
+        visibility:
+          sql:
+            pluginName: postgres12_pgx
+            databaseName: temporal_visibility
+            connectAddr: "temporal-postgres-rw.temporal.svc:5432"
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: temporal-db-secret
+            secretKey: password
+            maxConns: 5
+            maxIdleConns: 5
+            maxConnLifetime: "1h"
+
+web:
+  replicaCount: 1
+
+admintools:
+  enabled: true

@@ -1,0 +1,97 @@
+# Authentik Helm values
+# Chart: authentik/authentik 2024.12.3
+# Docs: https://docs.goauthentik.io/docs/installation/helm
+
+global:
+  # Inject all credentials from the SOPS-decrypted K8s Secret.
+  # Secret created by platform/auth/authentik-secret.enc.yaml (SopsSecret CRD).
+  # Keys: AUTHENTIK_SECRET_KEY, AUTHENTIK_POSTGRESQL__PASSWORD,
+  #       AUTHENTIK_BOOTSTRAP_PASSWORD, AUTHENTIK_BOOTSTRAP_TOKEN
+  envFrom:
+    - secretRef:
+        name: authentik-secrets
+
+authentik:
+  # secret_key injected via env var AUTHENTIK_SECRET_KEY from envFrom above
+  secret_key: ""
+
+  error_reporting:
+    enabled: false
+
+  postgresql:
+    host: "{{ .Release.Name }}-postgresql"
+    port: 5432
+    name: authentik
+    user: authentik
+    # Password injected via AUTHENTIK_POSTGRESQL__PASSWORD from envFrom above
+
+  redis:
+    host: "{{ .Release.Name }}-redis-master"
+    port: 6379
+
+server:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Metrics for Grafana Alloy
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+worker:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── PostgreSQL sub-chart (Bitnami) ───────────────────────────────────────────────
+postgresql:
+  enabled: true
+  auth:
+    username: authentik
+    database: authentik
+    # Password read from existing Secret created by SOPS Secrets Operator
+    existingSecret: authentik-secrets
+    secretKeys:
+      userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
+  primary:
+    persistence:
+      enabled: true
+      storageClass: local-path    # K3s/Talos homelab default
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# ── Redis sub-chart (Bitnami) ───────────────────────────────────────────────────
+redis:
+  enabled: true
+  auth:
+    enabled: false    # No Redis auth for homelab
+  master:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

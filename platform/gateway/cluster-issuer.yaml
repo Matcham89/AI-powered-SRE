@@ -1,0 +1,44 @@
+# Self-signed ClusterIssuer — used to bootstrap the platform TLS certificate.
+# Replace with a Let's Encrypt or ACME issuer when the cluster is internet-accessible.
+#
+# For Let's Encrypt (internet-facing clusters), replace with:
+#   apiVersion: cert-manager.io/v1
+#   kind: ClusterIssuer
+#   metadata:
+#     name: letsencrypt-prod
+#   spec:
+#     acme:
+#       server: https://acme-v02.api.letsencrypt.org/directory
+#       email: <your-email>
+#       privateKeySecretRef:
+#         name: letsencrypt-prod
+#       solvers:
+#         - http01:
+#             ingress:
+#               class: ""
+#               ingressClassName: ""
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+# Wildcard certificate for all platform UIs (argocd.local, grafana.local, etc.)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-tls
+  namespace: envoy-gateway-system
+spec:
+  secretName: platform-tls
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+  commonName: "*.local"
+  dnsNames:
+    - "*.local"
+    - argocd.local
+    - grafana.local
+    - auth.local
+    - temporal.local
