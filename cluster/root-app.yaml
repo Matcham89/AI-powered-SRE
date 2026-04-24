@@ -21,3 +21,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      # HTTPRoute CRD is installed by the envoy-gateway child app — root's
+      # own HTTPRoute (argocd) would otherwise fail dry-run and abort the
+      # entire sync, preventing the child apps (including envoy-gateway)
+      # from ever being created. Skip dry-run for missing CRDs so the sync
+      # proceeds; selfHeal retries the HTTPRoute once the CRD appears.
+      - SkipDryRunOnMissingResource=true

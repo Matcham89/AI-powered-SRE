@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: platform-gateway
   namespace: envoy-gateway-system
+  annotations:
+    # Apply after the envoy-gateway child app has created this namespace.
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   selector:
     app.kubernetes.io/component: proxy

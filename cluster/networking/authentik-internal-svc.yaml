@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: authentik-internal
   namespace: authentik
+  annotations:
+    # Apply after the authentik child app has created this namespace.
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   selector:
     app.kubernetes.io/name: authentik
