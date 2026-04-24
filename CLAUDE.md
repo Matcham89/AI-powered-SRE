@@ -117,4 +117,4 @@ Services are accessible via NodePort at port `32170`. Add these to `/etc/hosts` 
 argocd.local, grafana.local, auth.local, temporal.local, seaweedfs-filer.local, sample-api.local
 ```
 
-The `--e2e` flag in `install.sh` updates `/etc/hosts` automatically.
+Step 10 of `install.sh` discovers the correct IP + NodePort and prints a ready-to-paste `sudo` command — run it yourself to update `/etc/hosts`.

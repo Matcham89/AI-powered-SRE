@@ -68,8 +68,8 @@ At the end it prints your **SSO credentials and service URLs**.
 | 7 | Installs SOPS Secrets Operator |
 | 7b | Bootstraps ArgoCD repo credentials (one-time imperative step — decrypted locally with SOPS) |
 | 8 | Applies App-of-Apps root — ArgoCD takes over, syncing all platform components from git |
-| 9 | Waits for all 23 apps to reach Synced+Healthy (up to 25 min) |
-| 10 | Discovers Envoy Gateway NodePort, updates `/etc/hosts` for all `.local` domains |
+| 9 | Waits for all 26 apps to reach Synced+Healthy (up to 25 min) |
+| 10 | Discovers Envoy Gateway NodePort, prints the `/etc/hosts` commands for you to run |
 | 11 | Decrypts SSO secrets via SOPS, waits for Authentik, runs `terraform apply` to configure OIDC providers |
 
 No manual secret copying or config file editing required.

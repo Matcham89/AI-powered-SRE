@@ -5,9 +5,13 @@
 # This script is idempotent: safe to re-run if interrupted.
 #
 # Prerequisites:
-#   - curl, sops, age, helm installed
+#   - curl, sops, age, helm, python3 installed
 #   - An Age private key (default: ~/.config/sops/age/keys.txt)
-#   - sudo rights (for k3s install + /etc/hosts update in --e2e mode)
+#   - sudo rights (only if k3s needs installing)
+#
+# /etc/hosts:
+#   The script does NOT modify /etc/hosts. Step 10 discovers the node IP
+#   and NodePort, then prints the sudo commands for the user to run.
 #
 # Usage:
 #   ./bootstrap/install.sh               # install k3s + bootstrap platform
@@ -73,7 +77,7 @@ run() {
 }
 
 # ─── Step 0: K3s detection and installation ───────────────────────────────────
-step "0/9 K3s — detect or install"
+step "0/11 K3s — detect or install"
 
 K3S_RUNNING=false
 if kubectl get nodes &>/dev/null 2>&1; then
@@ -119,9 +123,9 @@ if [[ -z "${KUBECONFIG:-}" ]] && [[ -f "${K3S_KUBECONFIG}" ]]; then
 fi
 
 # ─── Step 1: Prerequisite check ────────────────────────────────────────────────
-step "1/9 Checking prerequisites"
+step "1/11 Checking prerequisites"
 
-for tool in kubectl helm sops age; do
+for tool in kubectl helm sops age python3; do
   if command -v "${tool}" &>/dev/null; then
     success "${tool} found: $(${tool} version --short 2>/dev/null || ${tool} --version 2>/dev/null | head -1)"
   else
@@ -136,7 +140,7 @@ else
 fi
 
 # ─── Step 2: Kubernetes context check ─────────────────────────────────────────
-step "2/9 Verifying Kubernetes context"
+step "2/11 Verifying Kubernetes context"
 
 CURRENT_CONTEXT=$(kubectl config current-context 2>/dev/null || echo "none")
 CURRENT_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "unknown")
@@ -157,7 +161,7 @@ if [[ "${DRY_RUN}" == "false" ]]; then
 fi
 
 # ─── Step 3: Age key discovery ─────────────────────────────────────────────────
-step "3/9 Loading Age private key"
+step "3/11 Loading Age private key"
 
 DEFAULT_KEY_FILE="${HOME}/.config/sops/age/keys.txt"
 
@@ -177,7 +181,7 @@ fi
 success "Age key loaded from: ${AGE_KEY_FILE}"
 
 # ─── Step 4: Create namespaces ─────────────────────────────────────────────────
-step "4/9 Creating namespaces"
+step "4/11 Creating namespaces"
 
 if [[ "${DRY_RUN}" == "false" ]]; then
   # Wait for any previously-deleted namespaces to finish terminating before recreating
@@ -206,7 +210,7 @@ run "kubectl apply -f '${SCRIPT_DIR}/manifests/namespaces.yaml'"
 success "Namespaces: argocd, sops-operator"
 
 # ─── Step 5: Inject Age key as Kubernetes Secret ───────────────────────────────
-step "5/9 Injecting Age private key (only imperative step)"
+step "5/11 Injecting Age private key (only imperative step)"
 
 info "Creating sops-age secret in sops-operator namespace..."
 
@@ -222,7 +226,7 @@ fi
 success "sops-age secret created in sops-operator namespace"
 
 # ─── Step 6: Install ArgoCD ────────────────────────────────────────────────────
-step "6/9 Installing ArgoCD ${ARGOCD_VERSION}"
+step "6/11 Installing ArgoCD ${ARGOCD_VERSION}"
 
 info "Applying ArgoCD manifest (server-side apply to handle large CRDs)..."
 run "kubectl apply -n argocd --server-side -f '${ARGOCD_INSTALL_URL}'"
@@ -238,7 +242,7 @@ fi
 success "ArgoCD is ready"
 
 # ─── Step 7: Install SOPS Secrets Operator ────────────────────────────────────
-step "7/9 Installing SOPS Secrets Operator"
+step "7/11 Installing SOPS Secrets Operator"
 
 if [[ "${DRY_RUN}" == "false" ]]; then
   helm repo add sops-secrets-operator "${SOPS_OPERATOR_REPO}" 2>/dev/null || true
@@ -258,7 +262,7 @@ success "SOPS Secrets Operator installed"
 # We decrypt the registry secret with SOPS locally and create a native K8s
 # Secret directly in the argocd namespace, bypassing the SOPS Operator for
 # this one bootstrap step.
-step "7b/9 Bootstrapping ArgoCD repo credentials"
+step "7b/11 Bootstrapping ArgoCD repo credentials"
 
 REGISTRY_DIR="${REPO_ROOT}/cluster/registry"
 
@@ -267,12 +271,12 @@ if [[ "${DRY_RUN}" == "true" ]]; then
 else
   info "Decrypting repo credentials and creating ArgoCD repository Secret..."
   TMPFILE=$(mktemp)
-  SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt "${REGISTRY_DIR}/repo-credentials.enc.yaml" > "${TMPFILE}"
+  SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt --output-type json "${REGISTRY_DIR}/repo-credentials.enc.yaml" > "${TMPFILE}"
 
-  REPO_URL=$(ruby  -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['url']")
-  REPO_USER=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['username']")
-  REPO_PASS=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['password']")
-  REPO_TYPE=$(ruby -ryaml -e "d=YAML.load_stream(File.read('${TMPFILE}')).first; puts d['spec']['secretTemplates'][0]['stringData']['type']")
+  REPO_URL=$(python3 -c "import json; d=json.load(open('${TMPFILE}')); print(d['spec']['secretTemplates'][0]['stringData']['url'])")
+  REPO_USER=$(python3 -c "import json; d=json.load(open('${TMPFILE}')); print(d['spec']['secretTemplates'][0]['stringData']['username'])")
+  REPO_PASS=$(python3 -c "import json; d=json.load(open('${TMPFILE}')); print(d['spec']['secretTemplates'][0]['stringData']['password'])")
+  REPO_TYPE=$(python3 -c "import json; d=json.load(open('${TMPFILE}')); print(d['spec']['secretTemplates'][0]['stringData']['type'])")
   rm -f "${TMPFILE}"
 
   kubectl create secret generic argocd-repo-creds \
@@ -290,20 +294,20 @@ else
 fi
 
 # ─── Step 8: Apply root ArgoCD Application ────────────────────────────────────
-step "8/9 Applying root Application (App-of-Apps)"
+step "8/11 Applying root Application (App-of-Apps)"
 
 info "Applying cluster/root-app.yaml..."
 run "kubectl apply -f '${ROOT_APP}'"
 success "Root app applied — ArgoCD will now sync the platform from git"
 
 # ─── Step 9: Wait for all apps Synced+Healthy ─────────────────────────────────
-step "9/9 Waiting for all ArgoCD apps to be Synced+Healthy"
+step "9/11 Waiting for all ArgoCD apps to be Synced+Healthy"
 
 EXPECTED_APPS=(
-  root sops-operator gateway gateway-resources cert-manager security
+  root sops-secrets-operator envoy-gateway gateway-resources cert-manager security-policies
   authentik authentik-routes seaweedfs
-  loki tempo mimir alloy beyla grafana
-  kagent khook github-mcp-agent
+  loki tempo mimir alloy metrics-server kube-state-metrics node-exporter beyla grafana
+  kagent-crds kagent khook-crds khook github-mcp-agent
   cnpg temporal sample-api
 )
 
@@ -343,12 +347,12 @@ if [[ "${DRY_RUN}" == "false" ]]; then
   fi
 fi
 
-# ─── Step 10: NodePort discovery + /etc/hosts ─────────────────────────────────
-step "10/11 Discovering NodePort and updating /etc/hosts"
+# ─── Step 10: NodePort discovery + /etc/hosts guidance ───────────────────────
+step "10/11 Discovering NodePort and computing /etc/hosts entries"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   dryrun "kubectl get svc -n envoy-gateway-system  # discover NodePorts"
-  dryrun "sudo tee -a /etc/hosts  # add .local entries"
+  dryrun "# compare /etc/hosts against required entries, print sudo command if changes needed"
 else
   HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
     -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
@@ -364,25 +368,44 @@ else
       -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
     BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
     HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
-    info "Using ${HOSTS_IP} for .local /etc/hosts entries"
+    info "Host IP for .local entries: ${HOSTS_IP}"
 
-    for hostname in auth.local grafana.local temporal.local sample-api.local argocd.local; do
-      if grep -q "${hostname}" /etc/hosts 2>/dev/null; then
-        if ! grep -q "${HOSTS_IP}[[:space:]]*${hostname}" /etc/hosts 2>/dev/null; then
-          sudo sed -i '' "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || \
-            sudo sed -i "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || true
-          info "Updated /etc/hosts: ${HOSTS_IP}  ${hostname}"
-        else
-          info "/etc/hosts already correct: ${HOSTS_IP}  ${hostname}"
-        fi
+    # Classify each required hostname against current /etc/hosts state
+    HOSTS_MISSING=()
+    HOSTS_WRONG=()
+    for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
+      if grep -qE "^[[:space:]]*${HOSTS_IP}[[:space:]]+${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
+        continue  # already correct
+      elif grep -qE "[[:space:]]${hostname}([[:space:]]|$)" /etc/hosts 2>/dev/null; then
+        HOSTS_WRONG+=("${hostname}")
       else
-        echo "${HOSTS_IP}  ${hostname}" | sudo tee -a /etc/hosts >/dev/null
-        info "Added to /etc/hosts: ${HOSTS_IP}  ${hostname}"
+        HOSTS_MISSING+=("${hostname}")
       fi
     done
-    success "/etc/hosts updated for all .local domains"
+
+    if [[ ${#HOSTS_MISSING[@]} -eq 0 ]] && [[ ${#HOSTS_WRONG[@]} -eq 0 ]]; then
+      success "/etc/hosts already contains all required entries pointing to ${HOSTS_IP}"
+    else
+      echo ""
+      warn "/etc/hosts needs updating — run the command(s) below (requires sudo):"
+      echo ""
+      if [[ ${#HOSTS_WRONG[@]} -gt 0 ]]; then
+        echo -e "  ${BOLD}# Remove stale entries pointing to a different IP:${NC}"
+        for h in "${HOSTS_WRONG[@]}"; do
+          echo "  sudo sed -i '' \"/[[:space:]]${h}\$/d\" /etc/hosts"
+        done
+        echo ""
+      fi
+      echo -e "  ${BOLD}# Append the required entries:${NC}"
+      echo "  sudo tee -a /etc/hosts >/dev/null <<'EOF'"
+      for h in "${HOSTS_MISSING[@]}" "${HOSTS_WRONG[@]}"; do
+        echo "  ${HOSTS_IP}  ${h}"
+      done
+      echo "  EOF"
+      echo ""
+    fi
   else
-    warn "Could not discover Envoy Gateway NodePorts — /etc/hosts not updated"
+    warn "Could not discover Envoy Gateway NodePorts — cannot compute /etc/hosts entries"
     warn "Check: kubectl get svc -n envoy-gateway-system"
     HTTP_NODEPORT=32170
     HTTPS_NODEPORT=32170
@@ -406,12 +429,14 @@ else
   _sops_key() {
     # Usage: _sops_key <encrypted-file> <template-name> <key-name>
     local file="$1" tpl="$2" key="$3"
-    SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt "${file}" 2>/dev/null | \
-      ruby -ryaml -e "
-d = YAML.safe_load(STDIN.read)
-t = d['spec']['secretTemplates'].find { |t| t['name'] == '${tpl}' }
-abort 'template not found' unless t
-puts t['stringData']['${key}']
+    SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt --output-type json "${file}" 2>/dev/null | \
+      python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+t = next((t for t in d['spec']['secretTemplates'] if t['name'] == '${tpl}'), None)
+if t is None:
+    sys.exit(1)
+print(t['stringData']['${key}'])
 " 2>/dev/null || echo ""
   }
 
