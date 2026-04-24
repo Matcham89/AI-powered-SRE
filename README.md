@@ -68,7 +68,7 @@ At the end it prints your **SSO credentials and service URLs**.
 | 7 | Installs SOPS Secrets Operator |
 | 7b | Bootstraps ArgoCD repo credentials (one-time imperative step — decrypted locally with SOPS) |
 | 8 | Applies App-of-Apps root — ArgoCD takes over, syncing all platform components from git |
-| 9 | Waits for all 26 apps to reach Synced+Healthy (up to 25 min) |
+| 9 | Waits for all 25 apps to reach Synced+Healthy (up to 25 min) |
 | 10 | Discovers Envoy Gateway NodePort, prints the `/etc/hosts` commands for you to run |
 | 11 | Decrypts SSO secrets via SOPS, waits for Authentik, runs `terraform apply` to configure OIDC providers |
 
@@ -214,7 +214,7 @@ Terraform variables are pulled from `TF_VAR_*` env vars when set by the bootstra
 
 **k3s over a managed Kubernetes service.** The goal was a full platform that runs on a single machine — a MacBook or a homelab node — without a cloud bill. k3s ships as a single binary, starts in seconds, and supports everything in this stack. Traefik and the default load balancer are disabled so Envoy Gateway owns ingress without conflicts.
 
-**App-of-Apps with automated sync.** A single root ArgoCD Application bootstraps all 23 apps from one kustomize manifest. Automated sync with self-heal means the cluster continuously reconciles to git state — no manual `argocd app sync` required after a change is pushed.
+**App-of-Apps with automated sync.** A single root ArgoCD Application bootstraps all 25 apps from one kustomize manifest. Automated sync with self-heal means the cluster continuously reconciles to git state — no manual `argocd app sync` required after a change is pushed.
 
 **SOPS + Age over external secret stores.** Vault and AWS Secrets Manager require running infrastructure before Kubernetes is up. Age encryption is file-based: secrets live in git, encrypted, and are decrypted in-cluster by the SOPS Operator. The only operational requirement is one private key file. This keeps the bootstrap entirely self-contained.
 
