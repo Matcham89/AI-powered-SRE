@@ -114,11 +114,6 @@ alloy:
         }
       }
 
-controller:
-  type: daemonset
-
-service:
-  enabled: true
   extraPorts:
     - name: otlp-grpc
       port: 4317
@@ -128,6 +123,12 @@ service:
       port: 4318
       targetPort: 4318
       protocol: TCP
+
+controller:
+  type: daemonset
+
+service:
+  enabled: true
 
 serviceMonitor:
   enabled: false
