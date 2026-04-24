@@ -17,7 +17,7 @@ data:
     - config:
         issuer: http://authentik-server.authentik.svc/application/o/argocd/
         clientID: argocd
-        clientSecret: $argocd-oidc-secret:client-secret
+        clientSecret: $dex.authentik.clientSecret
         insecureEnableGroups: true
         scopes:
           - openid
