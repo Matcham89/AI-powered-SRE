@@ -15,11 +15,8 @@ spec:
     spec:
       containers:
         - name: github-mcp-server
-          image: node:22-slim
-          command: ["npx"]
+          image: ghcr.io/github/github-mcp-server:latest
           args:
-            - -y
-            - "@github/mcp-server"
             - --transport
             - http
             - --port
