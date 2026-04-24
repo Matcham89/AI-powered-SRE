@@ -42,9 +42,11 @@ spec:
     - ports:
         - port: 443
         - port: 6443
-    # DEX → Authentik internal service (dex.config issuer resolution)
+    # DEX → Authentik pods (kube-router evaluates NetworkPolicy post-DNAT,
+    # so the egress rule must match the actual pod port 9000, not service port 80)
     - ports:
-        - port: 80
+        - port: 9000
+        - port: 9443
       to:
         - namespaceSelector:
             matchLabels:

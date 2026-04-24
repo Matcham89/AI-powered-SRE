@@ -25,6 +25,14 @@ SOPS_OPERATOR_CHART="sops-secrets-operator/sops-secrets-operator"
 SOPS_OPERATOR_REPO="https://isindir.github.io/sops-secrets-operator/"
 SOPS_OPERATOR_VALUES="${SCRIPT_DIR}/manifests/sops-operator-values.yaml"
 ROOT_APP="${REPO_ROOT}/cluster/root-app.yaml"
+TERRAFORM_DIR="${REPO_ROOT}/terraform"
+
+# Populated during bootstrap; used in summary
+DEMO_USER="demo-user"
+DEMO_PASS=""
+HOSTS_IP=""
+HTTP_NODEPORT=""
+HTTPS_NODEPORT=""
 
 # k3s
 K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
@@ -120,6 +128,12 @@ for tool in kubectl helm sops age; do
     error "${tool} is not installed. See README for install instructions."
   fi
 done
+
+if command -v terraform &>/dev/null; then
+  success "terraform found: $(terraform version | head -1)"
+else
+  warn "terraform not installed — SSO configuration will be skipped (https://developer.hashicorp.com/terraform/install)"
+fi
 
 # ─── Step 2: Kubernetes context check ─────────────────────────────────────────
 step "2/9 Verifying Kubernetes context"
@@ -329,21 +343,210 @@ if [[ "${DRY_RUN}" == "false" ]]; then
   fi
 fi
 
+# ─── Step 10: NodePort discovery + /etc/hosts ─────────────────────────────────
+step "10/11 Discovering NodePort and updating /etc/hosts"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  dryrun "kubectl get svc -n envoy-gateway-system  # discover NodePorts"
+  dryrun "sudo tee -a /etc/hosts  # add .local entries"
+else
+  HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
+  HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+
+  if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
+    success "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
+
+    NODE_IP=$(kubectl get nodes \
+      -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+    BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
+    HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
+    info "Using ${HOSTS_IP} for .local /etc/hosts entries"
+
+    for hostname in auth.local grafana.local temporal.local sample-api.local argocd.local; do
+      if grep -q "${hostname}" /etc/hosts 2>/dev/null; then
+        if ! grep -q "${HOSTS_IP}[[:space:]]*${hostname}" /etc/hosts 2>/dev/null; then
+          sudo sed -i '' "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || \
+            sudo sed -i "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || true
+          info "Updated /etc/hosts: ${HOSTS_IP}  ${hostname}"
+        else
+          info "/etc/hosts already correct: ${HOSTS_IP}  ${hostname}"
+        fi
+      else
+        echo "${HOSTS_IP}  ${hostname}" | sudo tee -a /etc/hosts >/dev/null
+        info "Added to /etc/hosts: ${HOSTS_IP}  ${hostname}"
+      fi
+    done
+    success "/etc/hosts updated for all .local domains"
+  else
+    warn "Could not discover Envoy Gateway NodePorts — /etc/hosts not updated"
+    warn "Check: kubectl get svc -n envoy-gateway-system"
+    HTTP_NODEPORT=32170
+    HTTPS_NODEPORT=32170
+  fi
+fi
+
+# ─── Step 11: Wait for Authentik + run Terraform ──────────────────────────────
+step "11/11 Configuring SSO (Terraform → Authentik)"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  dryrun "sops --decrypt <secrets>  # extract TF_VAR_* from SOPS"
+  dryrun "kubectl port-forward -n authentik svc/authentik-server 9000:80"
+  dryrun "TF_VAR_* terraform apply -auto-approve"
+elif ! command -v terraform &>/dev/null; then
+  warn "terraform not found — skipping SSO configuration"
+else
+  # Extract all terraform variable values directly from SOPS-encrypted secrets.
+  # No terraform.tfvars file required — values injected as TF_VAR_* env vars.
+  info "Extracting terraform variables from SOPS-encrypted secrets..."
+
+  _sops_key() {
+    # Usage: _sops_key <encrypted-file> <template-name> <key-name>
+    local file="$1" tpl="$2" key="$3"
+    SOPS_AGE_KEY_FILE="${AGE_KEY_FILE}" sops --decrypt "${file}" 2>/dev/null | \
+      ruby -ryaml -e "
+d = YAML.safe_load(STDIN.read)
+t = d['spec']['secretTemplates'].find { |t| t['name'] == '${tpl}' }
+abort 'template not found' unless t
+puts t['stringData']['${key}']
+" 2>/dev/null || echo ""
+  }
+
+  export TF_VAR_authentik_url="http://localhost:9000"
+
+  export TF_VAR_authentik_token=$(_sops_key \
+    "${REPO_ROOT}/platform/auth/authentik-secret.enc.yaml" \
+    "authentik-secrets" "AUTHENTIK_BOOTSTRAP_TOKEN")
+
+  export TF_VAR_admin_password=$(_sops_key \
+    "${REPO_ROOT}/platform/auth/authentik-secret.enc.yaml" \
+    "authentik-secrets" "AUTHENTIK_BOOTSTRAP_PASSWORD")
+
+  export TF_VAR_grafana_client_secret=$(_sops_key \
+    "${REPO_ROOT}/platform/observability/observability-secrets.enc.yaml" \
+    "grafana-oidc-secret" "client_secret")
+
+  export TF_VAR_temporal_client_secret=$(_sops_key \
+    "${REPO_ROOT}/apps/temporal/oauth2-proxy-secret.enc.yaml" \
+    "temporal-oauth2-proxy" "client-secret")
+
+  export TF_VAR_argocd_client_secret=$(_sops_key \
+    "${REPO_ROOT}/cluster/argocd/argocd-oidc-secret.enc.yaml" \
+    "argocd-oidc-secret" "client-secret")
+
+  if [[ -z "${TF_VAR_authentik_token}" ]] || [[ -z "${TF_VAR_admin_password}" ]]; then
+    warn "SOPS extraction failed — check Age key can decrypt platform secrets"
+    warn "Manual fallback: cd terraform && terraform apply  (requires terraform.tfvars)"
+  else
+    success "All terraform variables extracted from SOPS secrets"
+    DEMO_USER="demo-user"
+    DEMO_PASS="${TF_VAR_admin_password}"
+
+    info "Waiting for Authentik server pod to be Running (up to 5 minutes)..."
+    AUTH_TIMEOUT=300
+    AUTH_ELAPSED=0
+    AUTH_READY=false
+    while [[ ${AUTH_ELAPSED} -lt ${AUTH_TIMEOUT} ]]; do
+      AUTH_PHASE=$(kubectl get pods -n authentik \
+        -l "app.kubernetes.io/component=server" \
+        -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "")
+      if [[ "${AUTH_PHASE}" == "Running" ]]; then
+        AUTH_READY=true
+        break
+      fi
+      echo -e "  Authentik pod: ${AUTH_PHASE:-Pending} — ${AUTH_ELAPSED}s elapsed"
+      sleep 15
+      AUTH_ELAPSED=$((AUTH_ELAPSED + 15))
+    done
+
+    if [[ "${AUTH_READY}" == "false" ]]; then
+      warn "Authentik not ready after ${AUTH_TIMEOUT}s"
+      warn "Once ready, run: cd terraform && terraform apply"
+    else
+      success "Authentik pod is Running"
+
+      info "Starting port-forward to Authentik (localhost:9000)..."
+      pkill -f "kubectl port-forward.*authentik.*9000" 2>/dev/null || true
+      kubectl port-forward -n authentik svc/authentik-server 9000:80 &>/dev/null &
+      PF_PID=$!
+
+      info "Waiting for Authentik API to respond..."
+      API_TIMEOUT=120
+      API_ELAPSED=0
+      API_READY=false
+      while [[ ${API_ELAPSED} -lt ${API_TIMEOUT} ]]; do
+        HTTP_STATUS=$(curl -sk -o /dev/null -w "%{http_code}" \
+          "http://localhost:9000/-/health/ready/" 2>/dev/null || echo "000")
+        if [[ "${HTTP_STATUS}" == "200" ]]; then
+          API_READY=true
+          break
+        fi
+        echo -e "  Authentik API: HTTP ${HTTP_STATUS} — ${API_ELAPSED}s elapsed"
+        sleep 10
+        API_ELAPSED=$((API_ELAPSED + 10))
+      done
+
+      if [[ "${API_READY}" == "false" ]]; then
+        warn "Authentik API not responding after ${API_TIMEOUT}s — skipping terraform"
+        kill "${PF_PID}" 2>/dev/null || true
+      else
+        success "Authentik API is ready"
+
+        info "Running terraform init + apply (this may take a minute)..."
+        pushd "${TERRAFORM_DIR}" >/dev/null
+        terraform init -upgrade -input=false -no-color >/dev/null 2>&1
+        if terraform apply -auto-approve -input=false -no-color; then
+          success "Terraform applied — SSO providers configured for ArgoCD, Grafana, Temporal"
+        else
+          warn "terraform apply failed — re-run: cd terraform && terraform apply"
+        fi
+        popd >/dev/null
+
+        kill "${PF_PID}" 2>/dev/null || true
+      fi
+    fi
+  fi
+fi
+
 # ─── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}${BOLD}  Bootstrap complete!${NC}"
 echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "  ${BOLD}ArgoCD UI:${NC}"
-echo -e "    kubectl port-forward svc/argocd-server -n argocd 8080:443"
-echo -e "    https://localhost:8080"
+
+_PORT="${HTTPS_NODEPORT:-32170}"
+_IP="${HOSTS_IP:-<node-ip>}"
+
+if [[ -n "${DEMO_PASS}" ]]; then
+  echo -e "  ${BOLD}SSO credentials (all services via Authentik):${NC}"
+  echo -e "    Username : ${DEMO_USER}"
+  echo -e "    Password : ${DEMO_PASS}"
+  echo ""
+fi
+
+echo -e "  ${BOLD}Service URLs:${NC}"
+echo -e "    https://argocd.local:${_PORT}     — GitOps dashboard"
+echo -e "    https://grafana.local:${_PORT}    — Observability (Loki/Tempo/Mimir)"
+echo -e "    https://auth.local:${_PORT}       — Authentik SSO admin"
+echo -e "    https://temporal.local:${_PORT}   — Workflow UI"
 echo ""
-echo -e "  ${BOLD}ArgoCD initial admin password:${NC}"
+
+echo -e "  ${BOLD}/etc/hosts entries (${_IP}):${NC}"
+for hostname in argocd.local grafana.local auth.local temporal.local sample-api.local; do
+  echo -e "    ${_IP}  ${hostname}"
+done
+echo ""
+
+echo -e "  ${BOLD}ArgoCD local admin password:${NC}"
 echo -e "    kubectl get secret argocd-initial-admin-secret -n argocd \\"
 echo -e "      -o jsonpath='{.data.password}' | base64 -d && echo"
 echo ""
-echo -e "  ${BOLD}Watch sync progress:${NC}"
+
+echo -e "  ${BOLD}Watch sync status:${NC}"
 echo -e "    kubectl get applications -n argocd -w"
 echo ""
 
@@ -387,35 +590,18 @@ done
 
 # ── e2e-2: Envoy Gateway NodePort discovery ───────────────────────────────────
 step "e2e-2 Envoy Gateway NodePort discovery"
-HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
-  -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-  -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
-HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
-  -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
-  -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+# Step 10 already discovered and set these; re-check in case it failed
+if [[ -z "${HTTP_NODEPORT}" ]] || [[ -z "${HTTPS_NODEPORT}" ]]; then
+  HTTP_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "")
+  HTTPS_NODEPORT=$(kubectl get svc -n envoy-gateway-system \
+    -l "gateway.envoyproxy.io/owning-gateway-name=platform-gateway" \
+    -o jsonpath='{.items[0].spec.ports[?(@.name=="https")].nodePort}' 2>/dev/null || echo "")
+fi
 
 if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
   e2e_pass "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
-  # Discover the Mac-accessible node IP (the Lima/Rancher Desktop bridged NIC, not the VM-internal IP)
-  NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-  # On Rancher Desktop / Lima the bridged IP is on a 192.168.64.x subnet; fall back to node IP if not found
-  BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
-  HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
-  info "Using ${HOSTS_IP} for .local /etc/hosts entries"
-  # Update /etc/hosts for all platform .local domains
-  for hostname in auth.local grafana.local temporal.local sample-api.local argocd.local; do
-    if grep -q "${hostname}" /etc/hosts 2>/dev/null; then
-      # Update existing entry if IP differs
-      if ! grep -q "${HOSTS_IP}[[:space:]]*${hostname}" /etc/hosts 2>/dev/null; then
-        sudo sed -i '' "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || \
-          sudo sed -i "s|.*${hostname}|${HOSTS_IP}  ${hostname}|" /etc/hosts 2>/dev/null || true
-        info "Updated /etc/hosts: ${HOSTS_IP}  ${hostname}"
-      fi
-    else
-      echo "${HOSTS_IP}  ${hostname}" | sudo tee -a /etc/hosts >/dev/null
-      info "Added /etc/hosts: ${HOSTS_IP}  ${hostname}"
-    fi
-  done
 else
   e2e_fail "Could not discover Envoy Gateway NodePorts — check envoy-gateway-system namespace"
   HTTP_NODEPORT=80
