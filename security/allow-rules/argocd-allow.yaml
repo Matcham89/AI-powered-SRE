@@ -42,6 +42,10 @@ spec:
     - ports:
         - port: 443
         - port: 6443
-    # Authentik OIDC via Envoy Gateway NodePort (auth.local:32170)
+    # DEX → Authentik internal service (dex.config issuer resolution)
     - ports:
-        - port: 32170
+        - port: 80
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
