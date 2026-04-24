@@ -20,9 +20,20 @@ tempo:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
+  compactor:
+    compaction:
+      block_retention: 1h
   metricsGenerator:
     enabled: true
     remoteWriteUrl: "http://mimir-gateway.observability.svc/api/v1/push"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: 200m
+    memory: 768Mi
 
 persistence:
   enabled: true

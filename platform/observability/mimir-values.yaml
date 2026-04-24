@@ -8,6 +8,8 @@ mimir:
       push_grpc_method_enabled: true
       ring:
         replication_factor: 1
+    limits:
+      compactor_blocks_retention_period: 2h
     common:
       storage:
         backend: s3
@@ -32,25 +34,67 @@ minio:
 
 distributor:
   replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 192Mi
 
 ingester:
   replicas: 1
   zoneAwareReplication:
     enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 384Mi
 
 store_gateway:
   replicas: 1
   zoneAwareReplication:
     enabled: false
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 192Mi
 
 compactor:
   replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 192Mi
 
 querier:
   replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 192Mi
 
 query_frontend:
   replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 192Mi
 
 alertmanager:
   enabled: false
@@ -60,8 +104,7 @@ ruler:
   enabled: false
 
 query_scheduler:
-  enabled: true
-  replicas: 1
+  enabled: false
 
 chunks-cache:
   enabled: false

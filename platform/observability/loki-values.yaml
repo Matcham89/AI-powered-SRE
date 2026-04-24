@@ -4,6 +4,12 @@ loki:
   commonConfig:
     replication_factor: 1
   auth_enabled: false
+  limits_config:
+    retention_period: 1h
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+    working_directory: /var/loki/retention
   schemaConfig:
     configs:
       - from: "2024-01-01"
@@ -33,6 +39,13 @@ singleBinary:
     enabled: true
     storageClass: local-path
     size: 10Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 384Mi
 
 read:
   replicas: 0

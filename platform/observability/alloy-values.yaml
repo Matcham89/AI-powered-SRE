@@ -48,7 +48,7 @@ alloy:
           __address__ = "kube-state-metrics.observability.svc:8080",
         }]
         forward_to      = [prometheus.remote_write.mimir.receiver]
-        scrape_interval = "30s"
+        scrape_interval = "60s"
       }
 
       // ---- Metrics: node-exporter (host CPU/memory/disk/network) ----
@@ -57,7 +57,7 @@ alloy:
           __address__ = "node-exporter-prometheus-node-exporter.observability.svc:9100",
         }]
         forward_to      = [prometheus.remote_write.mimir.receiver]
-        scrape_interval = "30s"
+        scrape_interval = "60s"
       }
 
       // ---- Metrics: kubelet cAdvisor (container CPU/memory) ----
@@ -88,7 +88,7 @@ alloy:
       prometheus.scrape "cadvisor" {
         targets             = discovery.relabel.cadvisor_targets.output
         forward_to          = [prometheus.remote_write.mimir.receiver]
-        scrape_interval     = "30s"
+        scrape_interval     = "60s"
         scheme              = "https"
         bearer_token_file   = "/var/run/secrets/kubernetes.io/serviceaccount/token"
         tls_config {
@@ -132,6 +132,14 @@ alloy:
       port: 4318
       targetPort: 4318
       protocol: TCP
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 150m
+      memory: 512Mi
 
 controller:
   type: daemonset
