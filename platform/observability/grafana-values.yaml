@@ -37,7 +37,7 @@ envValueFrom:
 sidecar:
   dashboards:
     enabled: true
-    searchNamespace: ALL
+    searchNamespace: observability
 
 dashboardProviders:
   dashboardproviders.yaml:
