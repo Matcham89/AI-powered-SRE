@@ -28,8 +28,8 @@ spec:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 0
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
