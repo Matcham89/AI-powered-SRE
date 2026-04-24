@@ -4,11 +4,9 @@ metadata:
   name: coredns-custom
   namespace: kube-system
 data:
-  platform-hosts.server: |
-    local:53 {
-      rewrite name exact auth.local. platform-gateway.envoy-gateway-system.svc.cluster.local.
-      rewrite name exact argocd.local. platform-gateway.envoy-gateway-system.svc.cluster.local.
-      rewrite name exact grafana.local. platform-gateway.envoy-gateway-system.svc.cluster.local.
-      rewrite name exact temporal.local. platform-gateway.envoy-gateway-system.svc.cluster.local.
-      forward . 10.43.0.10
+  platform-hosts.override: |
+    template IN A local {
+      match "^(auth|argocd|grafana|temporal)\.local\.$"
+      answer "{{ .Name }} 60 IN A 10.43.66.2"
+      fallthrough
     }
