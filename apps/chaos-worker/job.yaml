@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chaos-worker
+  namespace: chaos-worker
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: chaos-worker
+      restartPolicy: Never
+      initContainers:
+        - name: install-deps
+          image: python:3.11-slim
+          command:
+            - pip
+            - install
+            - "--target=/deps"
+            - temporalio==1.8.0
+            - kubernetes==32.0.0
+          volumeMounts:
+            - name: deps
+              mountPath: /deps
+      containers:
+        - name: chaos-worker
+          image: python:3.11-slim
+          command:
+            - python
+            - /app/worker.py
+          env:
+            - name: PYTHONPATH
+              value: /deps
+          volumeMounts:
+            - name: script
+              mountPath: /app
+            - name: deps
+              mountPath: /deps
+      volumes:
+        - name: script
+          configMap:
+            name: chaos-worker-script
+        - name: deps
+          emptyDir: {}
