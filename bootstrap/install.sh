@@ -358,23 +358,38 @@ print(t['stringData']['${key}'])
     DEMO_USER="demo-user"
     DEMO_PASS="${TF_VAR_admin_password}"
 
-    info "Waiting for Authentik server pod Ready (up to 5 minutes)..."
-    # `Ready` is driven by the chart's readinessProbe against /-/health/ready/ —
-    # so once the condition flips True the HTTP endpoint is already answering.
-    # Earlier versions of this script waited on pod phase "Running", which is
-    # set the moment the container starts (~15 s) — long before Authentik has
-    # finished DB migrations and bound its port. The port-forward established
-    # against a non-listening pod then stayed broken even after the app came
-    # up, so terraform would get skipped on every fresh bootstrap.
+    info "Waiting for Authentik server pod Ready (up to 10 minutes)..."
+    # `Ready` is the chart's readinessProbe against /-/health/ready/, so once
+    # it flips True the HTTP endpoint is answering. Waiting on pod phase
+    # "Running" instead would catch the container the moment it starts — long
+    # before Authentik has finished DB migrations — and a port-forward opened
+    # against a non-listening pod stays broken even after the app comes up.
+    #
+    # The budget has to cover root-app→authentik-app sync, Helm install of the
+    # chart, CNPG postgres bootstrap (≈30s), SOPS-decrypt of authentik-secrets,
+    # and Authentik's own DB migrations + worker init (~2-3m alone). We use a
+    # poll loop rather than `kubectl wait` because the pod may not exist yet
+    # when this step starts — `kubectl wait` with a label selector exits
+    # immediately when no resources match, losing the wait window.
+    AUTH_TIMEOUT=600
+    AUTH_ELAPSED=0
     AUTH_READY=false
-    if kubectl wait --for=condition=Ready pod -n authentik \
+    while [[ ${AUTH_ELAPSED} -lt ${AUTH_TIMEOUT} ]]; do
+      READY_COND=$(kubectl get pods -n authentik \
         -l app.kubernetes.io/component=server \
-        --timeout=300s &>/dev/null; then
-      AUTH_READY=true
-    fi
+        -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' \
+        2>/dev/null || echo "")
+      if [[ "${READY_COND}" == "True" ]]; then
+        AUTH_READY=true
+        break
+      fi
+      echo -e "  Authentik pod Ready: ${READY_COND:-not-yet} — ${AUTH_ELAPSED}s elapsed"
+      sleep 15
+      AUTH_ELAPSED=$((AUTH_ELAPSED + 15))
+    done
 
     if [[ "${AUTH_READY}" == "false" ]]; then
-      warn "Authentik pod not Ready after 300s"
+      warn "Authentik pod not Ready after ${AUTH_TIMEOUT}s"
       warn "Once ready, run: cd terraform && terraform apply"
     else
       success "Authentik pod is Ready"
