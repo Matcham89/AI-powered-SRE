@@ -83,6 +83,6 @@ datasources:
         isDefault: false
       - name: Mimir
         type: prometheus
-        url: http://mimir-nginx.observability.svc/prometheus
+        url: http://mimir-gateway.observability.svc/prometheus
         access: proxy
         isDefault: true
