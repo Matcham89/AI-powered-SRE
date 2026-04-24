@@ -20,6 +20,7 @@ resources:
   - argocd/argocd-oidc-secret.enc.yaml
   - networking/platform-gateway-svc.yaml
   - networking/authentik-internal-svc.yaml
+  - networking/argocd-internal-svc.yaml
 
   # ── Platform component Applications ───────────────────────────────────────────
   # Uncommented as each step is implemented and tested:

@@ -19,7 +19,12 @@ data:
       fallthrough
     }
     template IN A local {
-      match "^(argocd|grafana|temporal)\.local\.$"
+      match "^argocd\.local\.$"
+      answer "{{ .Name }} 60 IN A 10.43.152.225"
+      fallthrough
+    }
+    template IN A local {
+      match "^(grafana|temporal)\.local\.$"
       answer "{{ .Name }} 60 IN A 10.43.66.2"
       fallthrough
     }
