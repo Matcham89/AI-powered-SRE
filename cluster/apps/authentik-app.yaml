@@ -23,7 +23,11 @@ spec:
       targetRevision: HEAD
       path: platform/auth
       directory:
-        exclude: "{*.enc.yaml,httproute-*.yaml}"
+        # HTTPRoutes are applied by the authentik-routes app. The SopsSecret
+        # (*.enc.yaml) must be included so the authentik-secrets native Secret
+        # is materialised — otherwise postgres init-db and authentik-server
+        # both hang in CreateContainerConfigError.
+        exclude: "httproute-*.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik
