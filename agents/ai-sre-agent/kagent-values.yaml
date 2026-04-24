@@ -5,3 +5,53 @@ providers:
     model: "claude-sonnet-4-6"
     apiKeySecretRef: kagent-anthropic
     apiKeySecretKey: ANTHROPIC_API_KEY
+
+revisionHistoryLimit: 2
+
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+podSecurityContext:
+  fsGroup: 1000
+
+controller:
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+agents:
+  k8s-agent:
+    enabled: true
+  promql-agent:
+    enabled: true
+  observability-agent:
+    enabled: true
+  helm-agent:
+    enabled: true
+  kgateway-agent:
+    enabled: false
+  istio-agent:
+    enabled: false
+  argo-rollouts-agent:
+    enabled: false
+  cilium-policy-agent:
+    enabled: false
+  cilium-manager-agent:
+    enabled: false
+  cilium-debug-agent:
+    enabled: false
