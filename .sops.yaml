@@ -1,10 +1,9 @@
 # SOPS configuration — Age public key routing
 #
-# Replace AGE_PUBLIC_KEY_PLACEHOLDER with your Age public key.
-# To generate a new Age key pair:
-#   age-keygen -o ~/.config/sops/age/keys.txt
-#   # The public key is printed to stdout and is the first line of keys.txt
-#   # e.g. age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+# encrypted_regex: only encrypts values under 'data' or 'stringData' keys.
+# This leaves kind, apiVersion, metadata, and other structural fields in
+# plaintext so ArgoCD and kustomize can parse the files correctly, while
+# keeping all actual secret values encrypted.
 #
 # The public key is safe to commit. The private key (keys.txt) must NEVER be committed.
 # The private key is added to the cluster once by bootstrap/install.sh.
@@ -12,25 +11,30 @@
 creation_rules:
   # ArgoCD repo + cluster credentials
   - path_regex: cluster/registry/.*\.yaml$
+    encrypted_regex: "^(data|stringData)$"
     age: >-
       age1jpjljdr54z2929pj587e2tl64cvfz67dugx4df0t93y96fnqx4uq7e8qvg
 
   # ArgoCD self-management secrets (admin password)
   - path_regex: cluster/argocd/.*\.enc\.yaml$
+    encrypted_regex: "^(data|stringData)$"
     age: >-
       age1jpjljdr54z2929pj587e2tl64cvfz67dugx4df0t93y96fnqx4uq7e8qvg
 
   # Platform component secrets (auth, storage, observability)
   - path_regex: platform/.*\.enc\.yaml$
+    encrypted_regex: "^(data|stringData)$"
     age: >-
       age1jpjljdr54z2929pj587e2tl64cvfz67dugx4df0t93y96fnqx4uq7e8qvg
 
   # Agent secrets (Anthropic API key, GitHub PAT reference)
   - path_regex: agents/.*\.enc\.yaml$
+    encrypted_regex: "^(data|stringData)$"
     age: >-
       age1jpjljdr54z2929pj587e2tl64cvfz67dugx4df0t93y96fnqx4uq7e8qvg
 
   # Application workload secrets
   - path_regex: apps/.*\.enc\.yaml$
+    encrypted_regex: "^(data|stringData)$"
     age: >-
       age1jpjljdr54z2929pj587e2tl64cvfz67dugx4df0t93y96fnqx4uq7e8qvg
