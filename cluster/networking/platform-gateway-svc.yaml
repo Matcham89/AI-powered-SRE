@@ -17,4 +17,7 @@ spec:
     - name: https
       port: 443
       targetPort: 10443
+    - name: http-internal
+      port: 32170
+      targetPort: 10080
   type: ClusterIP

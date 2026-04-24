@@ -4,9 +4,7 @@ metadata:
   name: coredns-custom
   namespace: kube-system
 data:
-  platform-hosts.override: |
-    template IN A local {
-      match "^(auth|argocd|grafana|temporal)\.local\.$"
-      answer "{{ .Name }} 60 IN A 10.43.66.2"
-      fallthrough
-    }
+  # k3s CoreDNS imports *.server files — *.override is silently ignored
+  platform-hosts.server: |
+    rewrite name regex ^(auth|argocd|grafana|temporal)\.local\.$ platform-gateway.envoy-gateway-system.svc.cluster.local.
+    fallthrough
