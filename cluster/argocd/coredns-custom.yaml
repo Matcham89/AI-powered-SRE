@@ -5,10 +5,8 @@ metadata:
   namespace: kube-system
 data:
   platform-hosts.override: |
-    hosts {
-      192.168.5.15 auth.local
-      192.168.5.15 argocd.local
-      192.168.5.15 grafana.local
-      192.168.5.15 temporal.local
+    template IN A local {
+      match "^(auth|argocd|grafana|temporal)\.local\.$"
+      answer "{{ .Name }} 60 IN A 192.168.5.15"
       fallthrough
     }
