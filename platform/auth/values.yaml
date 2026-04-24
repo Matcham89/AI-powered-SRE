@@ -39,11 +39,10 @@ server:
       cpu: 500m
       memory: 1Gi
 
-  # Metrics for Grafana Alloy
   metrics:
-    enabled: true
+    enabled: false
     serviceMonitor:
-      enabled: true
+      enabled: false
 
 worker:
   replicas: 1

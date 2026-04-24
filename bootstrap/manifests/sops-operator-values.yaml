@@ -15,15 +15,12 @@ extraEnv:
   - name: SOPS_AGE_KEY_FILE
     value: /etc/sops-age/keys.txt
 
-extraVolumes:
-  - name: sops-age-key
-    secret:
-      secretName: sops-age
-
-extraVolumeMounts:
+# secretsAsFiles is the correct chart value for mounting K8s Secrets as files.
+# extraVolumes/extraVolumeMounts are not recognised by this chart version.
+secretsAsFiles:
   - name: sops-age-key
     mountPath: /etc/sops-age
-    readOnly: true
+    secretName: sops-age
 
 # Watch all namespaces for SopsSecret CRDs
 watchNamespaces: []
