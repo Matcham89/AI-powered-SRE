@@ -22,13 +22,21 @@ macOS shortcut:
 brew install kubectl helm sops age terraform
 ```
 
-You also need the **Age private key** for this repo. Place it at the default location:
+You also need the **Age private key** for this repo — obtain it from the repo owner. Place it at the default location:
 
-```
-~/.config/sops/age/keys.txt
+```bash
+mkdir -p ~/.config/sops/age
+# paste the key into this file — it looks like:
+# AGE-SECRET-KEY-1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+nano ~/.config/sops/age/keys.txt
 ```
 
 That is the only secret you need. Everything else — SSO config, API keys, database passwords, OIDC client secrets — is already SOPS-encrypted in the repo and decrypted automatically at deploy time.
+
+Verify the key works before running bootstrap:
+```bash
+sops --decrypt cluster/registry/repo-credentials.enc.yaml
+```
 
 ---
 
