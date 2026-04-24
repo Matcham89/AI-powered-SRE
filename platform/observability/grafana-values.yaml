@@ -34,6 +34,39 @@ envValueFrom:
       name: grafana-oidc-secret
       key: client_secret
 
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    beyla-red-metrics:
+      gnetId: 19419
+      revision: 3
+      datasource: Mimir
+    loki-logs:
+      gnetId: 13639
+      revision: 2
+      datasource: Loki
+    kubernetes-pods:
+      gnetId: 15759
+      revision: 29
+      datasource: Mimir
+
 datasources:
   datasources.yaml:
     apiVersion: 1
