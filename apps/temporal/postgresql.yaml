@@ -4,7 +4,14 @@ metadata:
   name: temporal-postgres
   namespace: temporal
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # Temporal's Helm chart registers the schema-init Job as a PreSync hook,
+    # which needs postgres already running. Move this Cluster into PreSync
+    # with an early wave so it reconciles to Ready before the schema Job
+    # tries to connect. Without this, PreSync hangs and Sync phase (where
+    # the SopsSecret would otherwise live) never starts.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-20"
 spec:
   instances: 1
   postgresql:
