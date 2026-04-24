@@ -19,6 +19,7 @@ spec:
       containers:
         - name: sample-api
           image: nginx:1.27-alpine
+          command: ["/bin/sh", "-c", "sleep 8 && exec nginx -g 'daemon off;'"]
           ports:
             - containerPort: 80
           volumeMounts:
@@ -34,7 +35,7 @@ spec:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 30
       volumes:
         - name: config
