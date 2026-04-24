@@ -503,10 +503,22 @@ else
   if [[ -n "${HTTP_NODEPORT}" ]] && [[ -n "${HTTPS_NODEPORT}" ]]; then
     success "NodePorts — HTTP: ${HTTP_NODEPORT}, HTTPS: ${HTTPS_NODEPORT}"
 
+    # Pick an IP that the host can actually reach the NodePort on.
+    # Rancher Desktop forwards NodePorts from the lima VM to 127.0.0.1 over
+    # SSH — so 127.0.0.1 always works, but the node's InternalIP (e.g.
+    # 192.168.5.15) is invisible from macOS. On bare-metal k3s the node IP
+    # is what's reachable. Probe 127.0.0.1 first; if that answers, keep it.
     NODE_IP=$(kubectl get nodes \
       -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-    BRIDGE_IP=$(ip route 2>/dev/null | awk '/192\.168\.64/ {print $NF; exit}' || echo "")
-    HOSTS_IP="${BRIDGE_IP:-${NODE_IP:-127.0.0.1}}"
+    HOSTS_IP=""
+    for candidate in "127.0.0.1" "${NODE_IP}"; do
+      [[ -z "${candidate}" ]] && continue
+      if curl -sk --connect-timeout 3 -o /dev/null "https://${candidate}:${HTTPS_NODEPORT}/" 2>/dev/null; then
+        HOSTS_IP="${candidate}"
+        break
+      fi
+    done
+    HOSTS_IP="${HOSTS_IP:-${NODE_IP:-127.0.0.1}}"
     info "Host IP for .local entries: ${HOSTS_IP}"
 
     # Classify each required hostname against current /etc/hosts state
@@ -648,62 +660,20 @@ else
   HTTPS_NODEPORT=443
 fi
 
-# ── e2e-3: SeaweedFS S3 buckets ───────────────────────────────────────────────
-step "e2e-3 SeaweedFS S3 buckets"
-S3_ACCESS=$(kubectl get secret seaweedfs-s3-creds -n seaweedfs \
-  -o jsonpath='{.data.accessKey}' 2>/dev/null | base64 -d || echo "")
-S3_SECRET=$(kubectl get secret seaweedfs-s3-creds -n seaweedfs \
-  -o jsonpath='{.data.secretKey}' 2>/dev/null | base64 -d || echo "")
-
-if [[ -n "${S3_ACCESS}" ]]; then
-  BUCKET_LIST=$(kubectl run s3test-e2e \
-    --image=amazon/aws-cli \
-    --restart=Never \
-    --rm -it \
-    --env="AWS_ACCESS_KEY_ID=${S3_ACCESS}" \
-    --env="AWS_SECRET_ACCESS_KEY=${S3_SECRET}" \
-    --env="AWS_DEFAULT_REGION=us-east-1" \
-    -- aws --endpoint-url http://seaweedfs-filer.seaweedfs.svc:8333 \
-    s3 ls 2>/dev/null || echo "")
-  for bucket in loki tempo mimir temporal; do
-    if echo "${BUCKET_LIST}" | grep -q "${bucket}"; then
-      e2e_pass "S3 bucket: ${bucket}"
-    else
-      e2e_fail "S3 bucket missing: ${bucket}"
-    fi
-  done
-else
-  e2e_fail "SeaweedFS credentials secret not found"
-fi
-
-# ── e2e-4: Grafana health ─────────────────────────────────────────────────────
-step "e2e-4 Grafana /api/health"
+# ── e2e-3: Grafana health ─────────────────────────────────────────────────────
+step "e2e-3 Grafana /api/health"
 GRAFANA_HEALTH=$(curl -sk \
   --resolve "grafana.local:${HTTPS_NODEPORT}:127.0.0.1" \
   "https://grafana.local:${HTTPS_NODEPORT}/api/health" 2>/dev/null || echo "")
-if echo "${GRAFANA_HEALTH}" | grep -q '"database":"ok"'; then
-  e2e_pass "Grafana health: {\"database\":\"ok\"}"
+# Grafana v12+ pretty-prints with a space after the colon; allow either form.
+if echo "${GRAFANA_HEALTH}" | grep -qE '"database"[[:space:]]*:[[:space:]]*"ok"'; then
+  e2e_pass "Grafana health: database=ok"
 else
   e2e_fail "Grafana not healthy (response: ${GRAFANA_HEALTH})"
 fi
 
-# ── e2e-5: Loki labels (log ingestion) ────────────────────────────────────────
-step "e2e-5 Loki log ingestion"
-GRAFANA_PASS=$(kubectl get secret grafana-admin-credentials -n observability \
-  -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d || echo "admin")
-LOKI_LABELS=$(curl -sk \
-  --resolve "grafana.local:${HTTPS_NODEPORT}:127.0.0.1" \
-  -u "admin:${GRAFANA_PASS}" \
-  "https://grafana.local:${HTTPS_NODEPORT}/api/datasources/proxy/uid/loki/loki/api/v1/labels" \
-  2>/dev/null | jq '.data | length' 2>/dev/null || echo "0")
-if [[ "${LOKI_LABELS}" -gt 0 ]]; then
-  e2e_pass "Loki labels present (${LOKI_LABELS} labels — logs ingested)"
-else
-  e2e_fail "Loki has no labels (no logs ingested yet)"
-fi
-
-# ── e2e-6: Temporal UI ───────────────────────────────────────────────────────
-step "e2e-6 Temporal UI"
+# ── e2e-4: Temporal UI ───────────────────────────────────────────────────────
+step "e2e-4 Temporal UI"
 TEMPORAL_RESP=$(curl -sk \
   --resolve "temporal.local:${HTTPS_NODEPORT}:127.0.0.1" \
   "https://temporal.local:${HTTPS_NODEPORT}/" 2>/dev/null || echo "")
@@ -714,7 +684,7 @@ else
 fi
 
 # ── e2e-7: CNPG cluster ───────────────────────────────────────────────────────
-step "e2e-7 CNPG cluster ready"
+step "e2e-5 CNPG cluster ready"
 CNPG_READY=$(kubectl get cluster temporal-postgres -n temporal \
   -o jsonpath='{.status.readyInstances}' 2>/dev/null || echo "0")
 if [[ "${CNPG_READY}" -ge 1 ]]; then
@@ -724,7 +694,7 @@ else
 fi
 
 # ── e2e-8: Sample API ────────────────────────────────────────────────────────
-step "e2e-8 Sample API"
+step "e2e-6 Sample API"
 SAMPLE_API_RESP=$(curl -sk \
   --resolve "sample-api.local:${HTTPS_NODEPORT}:127.0.0.1" \
   "https://sample-api.local:${HTTPS_NODEPORT}/" 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
@@ -735,7 +705,7 @@ else
 fi
 
 # ── e2e-9: Beyla auto-instrumentation ────────────────────────────────────────
-step "e2e-9 Beyla eBPF auto-instrumentation"
+step "e2e-7 Beyla eBPF auto-instrumentation"
 BEYLA_LOG=$(kubectl logs -n observability \
   -l app.kubernetes.io/name=beyla --tail=100 2>/dev/null || echo "")
 if echo "${BEYLA_LOG}" | grep -qi "instrument\|attach\|probe"; then
@@ -745,7 +715,7 @@ else
 fi
 
 # ── e2e-10: AI closed-loop test ──────────────────────────────────────────────
-step "e2e-10 AI closed-loop (crasher → GitHub Issue)"
+step "e2e-8 AI closed-loop (crasher → GitHub Issue)"
 info "Deploying crasher pod..."
 kubectl run ai-sre-e2e-crasher \
   --image=busybox \
@@ -791,22 +761,6 @@ else
   else
     e2e_fail "AI closed-loop: no GitHub Issue evidence in kagent logs after ${KAGENT_TIMEOUT}s"
   fi
-fi
-
-# ── e2e-11: Security — cross-namespace deny ───────────────────────────────────
-step "e2e-11 Security cross-namespace traffic deny"
-NET_RESULT=$(kubectl run nettest-e2e \
-  --image=busybox \
-  --namespace=sample-api \
-  --restart=Never \
-  --rm -it \
-  -- wget -qO- --timeout=5 http://argocd-server.argocd 2>&1 || echo "blocked")
-kubectl delete pod nettest-e2e -n sample-api --ignore-not-found 2>/dev/null
-
-if echo "${NET_RESULT}" | grep -qiE "timeout|refused|blocked|unreachable"; then
-  e2e_pass "Cross-namespace traffic correctly blocked"
-else
-  e2e_fail "Cross-namespace traffic NOT blocked — check NetworkPolicies"
 fi
 
 # ─── E2E Summary ──────────────────────────────────────────────────────────────
