@@ -126,6 +126,55 @@ kubectl get secret argocd-initial-admin-secret -n argocd \
 
 ---
 
+## Trigger the chaos demo
+
+The end-to-end loop (pod crash → khook event → kagent RCA → GitHub Issue) is exercised by `ChaosWorkflow`, a Temporal workflow registered by the chaos-worker on the `chaos-queue` task queue. The workflow runs an activity that deletes a `sample-api` pod — the rest of the loop happens automatically.
+
+Once the platform is up, trigger a new execution one of two ways:
+
+### Option A — Temporal UI (web)
+
+1. Open `https://temporal.local:<port>` and log in via SSO.
+2. Make sure the **Namespace** dropdown is set to `default`.
+3. Click **Start Workflow** (top right).
+4. Fill in:
+   - **Workflow ID**: `chaos-demo-<anything-unique>` (e.g. `chaos-demo-1`)
+   - **Task Queue**: `chaos-queue`
+   - **Workflow Type**: `ChaosWorkflow`
+   - **Input**: leave empty (the workflow takes no arguments)
+5. Click **Start Workflow**. The run appears in the workflow list — click into it to follow each activity event.
+
+### Option B — temporal CLI (in-cluster admintools pod)
+
+The Helm chart ships an `admintools` pod with the `temporal` CLI preinstalled. Trigger a run directly:
+
+```bash
+kubectl exec -n temporal deploy/temporal-admintools -- \
+  temporal workflow start \
+    --address temporal-frontend.temporal.svc:7233 \
+    --namespace default \
+    --task-queue chaos-queue \
+    --type ChaosWorkflow \
+    --workflow-id chaos-demo-$(date +%s)
+```
+
+Each invocation is a fresh workflow execution — re-run as often as you want.
+
+### Confirm the loop closed
+
+```bash
+# Sample-api pod was killed and restarted by its Deployment
+kubectl get pods -n sample-api
+
+# kagent picked up the pod-restart event
+kubectl logs -n kagent deployment/kagent --tail=50 | grep -i "pod-restart\|sample-api"
+
+# A new GitHub Issue was opened with the RCA report
+open https://github.com/Matcham89/AI-powered-SRE/issues
+```
+
+---
+
 ## Architecture
 
 The platform is split into four stages, each building on the last.
