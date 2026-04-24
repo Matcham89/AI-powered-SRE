@@ -3,37 +3,35 @@ alloy:
     create: true
     content: |
       // ---- Logs: all pod logs → Loki ----
-      discovery.kubernetes "pods" {
-        role = "pod"
+      // Use filesystem-based tailing via /var/log/pods rather than
+      // loki.source.kubernetes / discovery.kubernetes — the latter returns
+      // 0 targets on Alloy v1.16 against k3s regardless of RBAC, and dropping
+      // it unblocks the log pipeline without waiting on an upstream fix.
+      local.file_match "pod_logs" {
+        path_targets = [{"__path__" = "/var/log/pods/*/*/*.log"}]
       }
 
-      discovery.relabel "pod_logs" {
-        targets = discovery.kubernetes.pods.targets
-        rule {
-          source_labels = ["__meta_kubernetes_namespace"]
-          action        = "replace"
-          target_label  = "namespace"
-        }
-        rule {
-          source_labels = ["__meta_kubernetes_pod_name"]
-          action        = "replace"
-          target_label  = "pod"
-        }
-        rule {
-          source_labels = ["__meta_kubernetes_container_name"]
-          action        = "replace"
-          target_label  = "container"
-        }
-        rule {
-          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
-          action        = "replace"
-          target_label  = "app"
-        }
+      loki.source.file "pod_logs" {
+        targets    = local.file_match.pod_logs.targets
+        forward_to = [loki.process.pod_labels.receiver]
       }
 
-      loki.source.kubernetes "pods" {
-        targets    = discovery.relabel.pod_logs.output
+      // Path format is /var/log/pods/<namespace>_<pod>_<uid>/<container>/0.log
+      // so regex out the three useful labels.
+      loki.process "pod_labels" {
         forward_to = [loki.write.default.receiver]
+
+        stage.regex {
+          expression = "/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>.+)_[^_/]+/(?P<container>[^/]+)/.*"
+          source     = "filename"
+        }
+        stage.labels {
+          values = {
+            namespace = "",
+            pod       = "",
+            container = "",
+          }
+        }
       }
 
       loki.write "default" {
@@ -132,6 +130,11 @@ alloy:
       port: 4318
       targetPort: 4318
       protocol: TCP
+
+  # /var/log is where kubelet drops pod logs — the filesystem-based
+  # log collection above tails symlinks under /var/log/pods.
+  mounts:
+    varlog: true
 
   resources:
     requests:
