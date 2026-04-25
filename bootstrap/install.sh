@@ -425,6 +425,10 @@ print(t['stringData']['${key}'])
 
         info "Running terraform init + apply (this may take a minute)..."
         pushd "${TERRAFORM_DIR}" >/dev/null
+        # Bootstrap targets a fresh Authentik DB. Any tfstate from a previous
+        # cluster references object IDs that no longer exist, which surfaces
+        # as confusing data-source / 404 errors during apply. Drop it.
+        rm -f terraform.tfstate terraform.tfstate.backup
         terraform init -upgrade -input=false -no-color >/dev/null 2>&1
         # Pass every SOPS-derived value as -var so it beats any stale
         # terraform.tfvars on disk (tfvars outranks TF_VAR_* env vars,

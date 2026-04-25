@@ -17,6 +17,22 @@ spec:
     spec:
       serviceAccountName: chaos-worker
       initContainers:
+        # The Temporal Helm chart only sets up the DB schema; the "default"
+        # namespace is registered by a separate PostSync hook job. Block the
+        # worker until that namespace exists, otherwise the SDK fails
+        # validation with "Namespace default is not found" and CrashLoops.
+        - name: wait-for-temporal-namespace
+          image: temporalio/admin-tools:1.30.3
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              until temporal operator namespace describe \
+                    --address temporal-frontend.temporal.svc:7233 \
+                    -n default >/dev/null 2>&1; do
+                echo "waiting for Temporal namespace 'default'..."
+                sleep 3
+              done
+              echo "Temporal namespace 'default' is ready."
         - name: install-deps
           image: python:3.11-slim
           command:
