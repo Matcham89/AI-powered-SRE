@@ -46,10 +46,15 @@ data:
             )
 
   worker.py: |
+    # Long-running worker that polls chaos-queue forever. The README's "Trigger
+    # the chaos demo" flow expects users to start workflows themselves via the
+    # CLI/UI, which only works if a worker is registered on the queue. The
+    # earlier one-shot variant ran one workflow and exited, leaving the queue
+    # without a poller — every subsequent CLI call returned "Not enough hosts
+    # to serve the request".
     import asyncio
     import logging
     import sys
-    import time
     sys.path.insert(0, "/app")
 
     from temporalio.client import Client
@@ -65,21 +70,14 @@ data:
 
     async def main():
         client = await Client.connect(TEMPORAL_HOST)
-        log.info("Connected to Temporal at %s", TEMPORAL_HOST)
-
-        workflow_id = f"chaos-demo-{int(time.time())}"
-        async with Worker(
+        log.info("Connected to Temporal at %s, polling task-queue %s", TEMPORAL_HOST, TASK_QUEUE)
+        worker = Worker(
             client,
             task_queue=TASK_QUEUE,
             workflows=[ChaosWorkflow],
             activities=[crash_sample_api],
-        ):
-            result = await client.execute_workflow(
-                ChaosWorkflow.run,
-                id=workflow_id,
-                task_queue=TASK_QUEUE,
-            )
-            log.info("ChaosWorkflow complete: %s", result)
+        )
+        await worker.run()
 
 
     if __name__ == "__main__":

@@ -1,17 +1,21 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: chaos-worker
   namespace: chaos-worker
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    app: chaos-worker
 spec:
-  ttlSecondsAfterFinished: 300
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaos-worker
   template:
+    metadata:
+      labels:
+        app: chaos-worker
     spec:
       serviceAccountName: chaos-worker
-      restartPolicy: Never
       initContainers:
         - name: install-deps
           image: python:3.11-slim
@@ -38,6 +42,13 @@ spec:
               mountPath: /app
             - name: deps
               mountPath: /deps
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
       volumes:
         - name: script
           configMap:

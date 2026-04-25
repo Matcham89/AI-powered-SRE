@@ -4,4 +4,4 @@ kind: Kustomization
 resources:
   - configmap.yaml
   - rbac.yaml
-  - job.yaml
+  - deployment.yaml
