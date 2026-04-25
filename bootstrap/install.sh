@@ -460,7 +460,7 @@ EXPECTED_APPS=(
   authentik authentik-routes seaweedfs
   loki tempo mimir alloy kube-state-metrics node-exporter beyla grafana
   kagent-crds kagent khook-crds khook github-mcp-agent
-  cnpg temporal sample-api
+  cnpg temporal sample-api chaos-worker
 )
 
 if [[ "${DRY_RUN}" == "false" ]]; then

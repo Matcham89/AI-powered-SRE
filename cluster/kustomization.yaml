@@ -52,3 +52,4 @@ resources:
   - apps/cnpg-app.yaml                 # Step 12 — CloudNative-PG operator (prereq)
   - apps/temporal-app.yaml             # Step 12 — Temporal workflow engine
   - apps/sample-api-app.yaml          # Step 12 — Sample Go API
+  - apps/chaos-worker-app.yaml        # Step 12 — Temporal chaos worker (chaos-queue poller)
