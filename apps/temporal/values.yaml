@@ -34,6 +34,14 @@ server:
 
 web:
   replicaCount: 1
+  # Temporal UI's CSRF protection writes the _csrf cookie with Secure flag by
+  # default. Because the platform is served over plain HTTP on :32170 the
+  # browser drops that cookie and every POST (Start Workflow, Terminate, etc.)
+  # returns "missing csrf token in request header". Flipping this to insecure
+  # lets the cookie ride over HTTP so writes work again.
+  additionalEnv:
+    - name: TEMPORAL_CSRF_COOKIE_INSECURE
+      value: "true"
 
 admintools:
   enabled: true
