@@ -7,3 +7,4 @@ resources:
   - httproute-temporal.yaml
   - oauth2-proxy.yaml
   - oauth2-proxy-secret.enc.yaml
+  - namespace-register-job.yaml

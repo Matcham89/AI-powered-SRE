@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: temporal-register-default-ns
+  namespace: temporal
+  annotations:
+    # The upstream Temporal Helm chart only sets up the database schema; it
+    # never registers a Temporal namespace, so any workflow CLI/UI call to
+    # the "default" namespace fails with "Namespace default is not found".
+    # Run a one-shot Job after the schema hook completes to register it.
+    # PostSync runs once after the main Sync phase; selfHeal won't replay it.
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: register
+          image: temporalio/admin-tools:1.30.3
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              # Idempotent: describe first; only create if missing.
+              if temporal operator namespace describe -n default \
+                   --address temporal-frontend.temporal.svc:7233 \
+                   >/dev/null 2>&1; then
+                echo "Namespace 'default' already registered."
+                exit 0
+              fi
+              echo "Registering Temporal namespace 'default'..."
+              temporal operator namespace create \
+                --address temporal-frontend.temporal.svc:7233 \
+                --retention 24h \
+                -n default
